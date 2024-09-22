@@ -14,11 +14,11 @@
 
 <style>
   .list {
-    padding: var(--margin);
+    /* padding: var(--margin); */
     max-height: 100%;
     overflow: auto;
     backdrop-filter: blur(5px);
-    border-top: 1px solid var(--primary);
+    /* border-top: 1px solid var(--primary); */
   }
 
   ul {
@@ -29,6 +29,6 @@
 
   li {
     padding: 8px 0;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid var(--primary-50);
   }
 </style>

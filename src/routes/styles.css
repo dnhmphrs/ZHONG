@@ -13,19 +13,19 @@
 	color: var(--color-text);
 }
 
-:root {
+/* :root {
 	--background: #f0f0f0;
 	--background-50: #f0f0f080;
 	--primary: #232323;
 	--primary-50: #23232380;
-}
+} */
 
-/* :root {
+:root {
 	--background: #232323;
 	--background-50: #23232380;
 	--primary: #f0f0f0;
 	--primary-50: #f0f0f080;
-} */
+}
 
 :root {
 	box-sizing: border-box;
@@ -53,7 +53,7 @@
 	text-transform: none;
 	letter-spacing: 0.1em;
 	line-height: 150%;
-	font-size: 14px;
+	font-size: 12px;
 }
 
 /* ::-webkit-scrollbar {

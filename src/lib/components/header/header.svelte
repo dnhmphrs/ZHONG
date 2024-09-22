@@ -27,9 +27,9 @@
 		user-select: none;
 		color: var(--primary);
 		display: flex;
-		justify-content: space-between;;
+		justify-content: space-between;
 		align-items: center;
-		background: var(--primary);
+		/* background: var(--primary); */
 		position: fixed;
 		padding: 0 16px;
 
@@ -41,9 +41,9 @@
 	}
 
 	p {
-		font-size: 16px;
+		font-size: 14px;
 		padding: 2px;
-		color:var(--background);
+		/* color:var(--background); */
 	}
 
 	.nav {

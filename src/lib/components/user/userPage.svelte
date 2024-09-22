@@ -8,7 +8,8 @@
     height: 100%;
     backdrop-filter: blur(5px);
     padding: var(--margin);
-    border: 1px solid #000;
+    border: 1px solid var(--primary-50);
+    box-shadow: var(--shadow);
   }
 </style>
 
