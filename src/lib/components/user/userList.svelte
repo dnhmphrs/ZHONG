@@ -17,6 +17,7 @@
     /* padding: var(--margin); */
     max-height: 100%;
     overflow: auto;
+    border-radius: 8px;
     /* border-top: 1px solid var(--primary); */
   }
 
