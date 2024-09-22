@@ -17,7 +17,6 @@
     /* padding: var(--margin); */
     max-height: 100%;
     overflow: auto;
-    backdrop-filter: blur(5px);
     /* border-top: 1px solid var(--primary); */
   }
 

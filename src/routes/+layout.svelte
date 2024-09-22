@@ -83,9 +83,10 @@
 		max-height: 100vh;
 		width: 100%;
 		overflow: hidden;
+		background: var(--background);
 	}
 
-	.loading {
+	/* .loading {
 		position: absolute;
 		font-style: italic;
 		font-family: serif;
@@ -94,7 +95,7 @@
 		transform: translate(-50%, -50%);
 		padding: 10px;
 		font-size: 12px;
-	}
+	} */
 
 	main {
 		flex: 1;

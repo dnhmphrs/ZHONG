@@ -11,7 +11,7 @@
     align-items: center;
     border: 1px solid var(--primary-50);
     box-shadow: var(--shadow);
-    backdrop-filter: blur(5px);
+    background: #232323;
     max-height: 320px;
   }
 </style>

@@ -6,7 +6,7 @@
   .page {
     width: 100%;
     height: 100%;
-    backdrop-filter: blur(5px);
+    background: #232323;
     padding: var(--margin);
     border: 1px solid var(--primary-50);
     box-shadow: var(--shadow);

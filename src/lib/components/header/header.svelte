@@ -29,7 +29,8 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		/* background: var(--primary); */
+		background: #232323;
+		border-bottom: 1px solid var(--primary-50);
 		position: fixed;
 		padding: 0 16px;
 
