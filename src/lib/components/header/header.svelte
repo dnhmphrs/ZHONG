@@ -5,7 +5,7 @@
 
 <header>
 
-	<p>IOTA</p>
+	<h2>IOTA</h2>
 	<div class="nav">
 		<p>patients</p>
 		<p>data</p>
@@ -41,8 +41,12 @@
 		box-shadow: var(--shadow);
 	}
 
+	h2 {
+		font-size: 16px;
+	}
+
 	p {
-		font-size: 14px;
+		font-size: 12px;
 		padding: 2px;
 		/* color:var(--background); */
 	}
