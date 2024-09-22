@@ -60,11 +60,11 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </svelte:head>
 
-{#if Geometry}
+<!-- {#if Geometry}
 	<svelte:component this={Geometry} />
 {:else}
 	<div class="loading">loading.</div>
-{/if}
+{/if} -->
 
 <div class="app">
 	<Header/>
