@@ -151,7 +151,7 @@ div::-webkit-scrollbar-track {
 
 /* Thumb of the scrollbar (the part you drag) */
 div::-webkit-scrollbar-thumb {
-	background-color: var(--primary);
+	background-color: var(--primary-50);
 	border-radius: 10px;
 }
 
