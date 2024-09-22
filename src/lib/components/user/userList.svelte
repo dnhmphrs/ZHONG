@@ -29,6 +29,6 @@
 
   li {
     padding: 8px 0;
-    border-bottom: 1px solid var(--primary-50);
+    border-top: 1px solid var(--primary-50);
   }
 </style>
