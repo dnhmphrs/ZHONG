@@ -23,26 +23,22 @@ const bgFragShaderSource = `
   
   void main() {
     float zoom = 1.0;
-    float timescale = 0.00025;
+    float timescale = 0.000125;
 
     vec2 adjustedPosition = (vUv - 0.5) / zoom + 0.5;
     adjustedPosition.x *= aspectRatio; // Adjust for aspect ratio
 
     // Define pastel colors directly in the shader
-    // vec3 sunshade = vec3(1.0, 0.5882, 0.3098); // sunshade
-    vec3 primary = vec3(0.9, 0.4882, 0.3098);
-    /// vec3 primary = vec3(1.0, 0.5882, 0.3098);
-    vec3 pastel1 = vec3(1.0, 0.7137, 0.7569); // Pastel pink
-    vec3 pastel2 = vec3(0.5961, 1.0, 0.5961); // Mint green
-    vec3 pastel3 = vec3(0.9020, 0.9020, 0.9804); // Lavender
+    vec3 primary = vec3(0.95, 0.975, 0.975);
+    vec3 pastel1 = vec3(0.85, 0.875, 0.875); // Pastel pink
 
     // Adjust the center position
     vec2 center = vec2(0.5, 0.5);
     center.x *= aspectRatio;
 
     // Stabilize the band size
-    // float bandSize = 0.1 + sin(time * timescale) * 0.025; 
-    float bandSize = 0.075;
+    // float bandSize = 0.1 + sin(time * timescale) * 0.05; 
+    float bandSize = 0.025;
     float dist = length(adjustedPosition - center);
     float bandedDist = fract(dist / bandSize) * bandSize / dist * fract(dist / bandSize);
 
@@ -57,9 +53,7 @@ const bgFragShaderSource = `
                        + cos(dot(adjustedPosition, vec2(43.2321, 29.1234)) * 30.0 - time * timescale);
     float noiseEffect = abs(noisePattern);
 
-    float range1 = step(0.33, noiseEffect);
-    // float range2 = step(0.66, noiseEffect) * (1.0 - range1); // Apply only if range1 is not active
-    // float range3 = 1.0 - step(0.66, noiseEffect); // Apply only if range2 is not active
+    float range1 = step(0.1, noiseEffect);
     
     vec3 color = mix(primary, pastel1, range1 * -wave );
     color = mix(primary, color, wave * noiseEffect );

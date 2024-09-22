@@ -2,20 +2,22 @@
 @import '$lib/styles/fonts.css';
 
 :root {
-	--font-header: dahlia, serif;
+	--font-header: nb-architekt, serif;
 	--font-body: nb-architekt, serif;
 	--column-width: 42rem;
 	--margin: 20px;
+	--header-height: 46px;
+	--shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
 
 	font-family: var(--font-body);
 	color: var(--color-text);
 }
 
 :root {
-	--background: #232323;
-	--background-50: #23232380;
-	--primary: #d0d0d0;
-	--primary-50: #d0d0d0;
+	--background: #f0f0f0;
+	--background-50: #f0f0f080;
+	--primary: #232323;
+	--primary-50: #23232380;
 }
 
 :root {
@@ -73,13 +75,13 @@ h4,
 h5,
 h6 {
 	font-family: var(--font-header);
+	font-weight: 600;
 	letter-spacing: 0.1em;
 	margin: 0;
 }
 
 h1 {
 	font-size: 22px;
-	font-weight: 400;
 }
 
 a {
@@ -125,4 +127,28 @@ button:focus:not(:focus-visible) {
 		letter-spacing: 0.08em;
 		font-size: 13px;
 	}
+}
+
+/* Custom scrollbar for WebKit browsers (Chrome, Safari, Opera) */
+div::-webkit-scrollbar {
+	width: 1px;
+	height: 1px;
+}
+
+/* Track of the scrollbar */
+div::-webkit-scrollbar-track {
+	width: 1px;
+	height: 1px;
+	background: transparent; /* You can adjust this if needed */
+}
+
+/* Thumb of the scrollbar (the part you drag) */
+div::-webkit-scrollbar-thumb {
+	background-color: var(--primary);
+	border-radius: 10px;
+}
+
+/* For Edge and IE (unsupported but future-proofing) */
+div {
+	-ms-overflow-style: -ms-autohiding-scrollbar; /* Auto-hides scrollbar */
 }

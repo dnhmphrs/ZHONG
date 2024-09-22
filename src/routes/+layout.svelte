@@ -1,6 +1,11 @@
 <script>
 	import './styles.css';
 
+	// temp
+	// import { fetchLeaderboard, setNewPlayerID } from '$lib/backend/api';
+
+	import Header from '$lib/components/header/Header.svelte';
+
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { webVitals } from '$lib/vitals';
@@ -34,6 +39,10 @@
 		const module = await import('$lib/graphics/webgl.svelte');
 		Geometry = module.default;
 
+		// let leader = fetchLeaderboard();
+		console.log(leader);
+
+
 		handleScreen();
 		window.addEventListener('resize', () => handleScreen());
 
@@ -44,37 +53,11 @@
 </script>
 
 <svelte:head>
-	<title>Der logische Aufbau der Web</title>
-	<meta name="description" content="" />
+	<title>IOTA : Complex Health Made Simple.</title>
+	<meta name="description" content="demo site." />
 	<meta name="keywords" content="" />
-	<meta name="author" content="AUFBAU" />
+	<meta name="author" content="IOTA" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-	<link rel="preload" href="/aufbau.svg" as="image" type="image/svg+xml" crossorigin="anonymous" />
-
-	<!-- <link
-		rel="preload"
-		href="/fonts/NB-Architekt-Pro-Light.woff"
-		as="font"
-		type="font/woff"
-		crossorigin="anonymous"
-	/> -->
-
-	<!-- <link
-		rel="preload"
-		href="/fonts/NB-Architekt-Pro-Bold.woff"
-		as="font"
-		type="font/woff"
-		crossorigin="anonymous"
-	/> -->
-
-	<!-- <link
-	rel="preload"
-	href="/fonts/Dahlia-Medium.woff2"
-	as="font"
-	type="font/woff2"
-	crossorigin="anonymous"
-/> -->
 </svelte:head>
 
 {#if Geometry}
@@ -84,6 +67,7 @@
 {/if}
 
 <div class="app">
+	<Header/>
 	<main>
 		<slot />
 	</main>
@@ -120,6 +104,8 @@
 		justify-content: center;
 		padding: 1rem;
 		width: 100%;
-		height: 100%;
+		height: calc(100dvh - var(--header-height));
+		bottom: 0;
+		position: absolute;
 	}
 </style>
