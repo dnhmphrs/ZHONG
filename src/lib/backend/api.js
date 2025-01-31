@@ -1,10 +1,10 @@
 import { RectAreaLight } from "three";
 import { get } from "svelte/store";
-import { supabase } from "./supabase.js";
+import { supabase } from "./supabaseClient.js";
 import { sessionID, playerID, pFencedTiles, boardOccupiedTiles } from "$lib/store/pentominos.js"
 import { leaderboard } from "$lib/store/data.js";
 
-const BACKEND_URL = 'https://n80dj9of87.execute-api.us-east-1.amazonaws.com/production';
+const BACKEND_URL = 'TODO';
 
 /*
 async function fetchLeaderboard(orderID) {
