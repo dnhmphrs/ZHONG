@@ -4,7 +4,7 @@
 	// temp
 	// import { fetchLeaderboard, setNewPlayerID } from '$lib/backend/api';
 
-	import Header from '$lib/components/header/Header.svelte';
+	import Header from '$lib/components/header/header.svelte';
 
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
@@ -53,7 +53,7 @@
 </script>
 
 <svelte:head>
-	<title>IOTA : Complex Health Made Simple.</title>
+	<title>IOTA : DEMO</title>
 	<meta name="description" content="demo site." />
 	<meta name="keywords" content="" />
 	<meta name="author" content="IOTA" />
