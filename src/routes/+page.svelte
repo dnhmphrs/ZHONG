@@ -1,7 +1,7 @@
 <script>
-	import UserProfile from '$lib/components/user/UserProfile.svelte';
-	import UserList from '$lib/components/user/UserList.svelte';
-	import UserPage from '$lib/components/user/UserPage.svelte';
+	import UserProfile from '$lib/components/user/userProfile.svelte';
+	import UserList from '$lib/components/user/userList.svelte';
+	import UserPage from '$lib/components/user/userPage.svelte';
 </script>
 
 <div class="page">
