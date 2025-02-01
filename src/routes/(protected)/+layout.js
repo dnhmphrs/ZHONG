@@ -4,4 +4,6 @@ import { browser } from '$app/environment';
 export const load = async ({ parent }) => {
 	const data = await parent();
 	return data;
-}; 
+};
+
+export const prerender = false; 
