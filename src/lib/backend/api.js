@@ -2,28 +2,44 @@ import { supabase } from './supabase';
 
 // Authentication & User Management
 export async function signInUser(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-    });
-    return { data, error };
-}
-
-export async function signUpUser(name, email, password) {
-    // First create the auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
     });
     
     if (authError) return { error: authError };
 
-    // Then create the user profile
+    // Verify the user is a patient
     const { data, error } = await supabase
-        .from('user')
-        .insert([{ id: authData.user.id, name, email, password }]);
+        .from('profile')
+        .select('*')
+        .eq('id', authData.user.id)
+        .eq('role', 'patient')
+        .single();
 
-    return { data, error };
+    if (error || !data) {
+        await supabase.auth.signOut();
+        return { error: new Error('Not authorized as patient') };
+    }
+
+    return { data: authData };
+}
+
+export async function signUpUser(email, password, name, role = 'patient') {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: {
+                name,
+                role
+            }
+        }
+    });
+    
+    if (authError) return { error: authError };
+    
+    return { data: authData };
 }
 
 export async function signInClinician(email, password) {
@@ -34,14 +50,20 @@ export async function signInClinician(email, password) {
     
     if (authError) return { error: authError };
 
-    // Verify the user is actually a clinician
+    // Verify the user is a clinician
     const { data, error } = await supabase
-        .from('clinician')
+        .from('profile')
         .select('*')
         .eq('id', authData.user.id)
+        .eq('role', 'clinician')
         .single();
 
-    return { data, error };
+    if (error || !data) {
+        await supabase.auth.signOut();
+        return { error: new Error('Not authorized as clinician') };
+    }
+
+    return { data: authData };
 }
 
 export async function signOut() {

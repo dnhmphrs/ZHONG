@@ -39,9 +39,9 @@
 		const module = await import('$lib/graphics/webgl.svelte');
 		Geometry = module.default;
 
+		// Remove these lines since fetchLeaderboard is commented out
 		// let leader = fetchLeaderboard();
-		console.log(leader);
-
+		// console.log(leader);
 
 		handleScreen();
 		window.addEventListener('resize', () => handleScreen());

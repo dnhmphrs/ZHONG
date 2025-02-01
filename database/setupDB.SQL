@@ -10,9 +10,11 @@ DROP TABLE IF EXISTS aspect CASCADE;
 DROP TABLE IF EXISTS diary CASCADE;
 DROP TABLE IF EXISTS cohort_clinician CASCADE;
 DROP TABLE IF EXISTS cohort_user CASCADE;
+DROP TABLE IF EXISTS cohort_member CASCADE;
 DROP TABLE IF EXISTS cohort CASCADE;
 DROP TABLE IF EXISTS clinician CASCADE;
 DROP TABLE IF EXISTS "user" CASCADE;
+DROP TABLE IF EXISTS profile CASCADE;
 
 DROP TYPE IF EXISTS aspect_data_type CASCADE;
 
@@ -21,65 +23,44 @@ CREATE TYPE aspect_data_type AS ENUM ('text', 'scale');
 
 -- 3. Create Tables with Constraints
 
--- User Table
-CREATE TABLE "user" (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+-- Profile table for auth
+CREATE TABLE profile (
+    id UUID PRIMARY KEY REFERENCES auth.users,
+    role TEXT NOT NULL CHECK (role IN ('patient', 'clinician')),
     name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
+    email TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- Clinician Table
-CREATE TABLE clinician (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- Cohort Table
+-- Update Cohort Table
 CREATE TABLE cohort (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL UNIQUE,
     description TEXT,
-    owner_id UUID NOT NULL REFERENCES clinician(id) ON DELETE CASCADE,
+    clinician_id UUID NOT NULL REFERENCES profile(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- Cohort_User Table (Many-to-Many Relationship between Cohorts and Users)
-CREATE TABLE cohort_user (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    cohort_id UUID NOT NULL REFERENCES cohort(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+-- Replace cohort_user with cohort_member
+CREATE TABLE cohort_member (
+    cohort_id UUID REFERENCES cohort(id) ON DELETE CASCADE,
+    patient_id UUID REFERENCES profile(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    UNIQUE (cohort_id, user_id)
+    PRIMARY KEY (cohort_id, patient_id)
 );
 
--- Cohort_Clinician Table (Many-to-Many Relationship between Cohorts and Clinicians)
-CREATE TABLE cohort_clinician (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    cohort_id UUID NOT NULL REFERENCES cohort(id) ON DELETE CASCADE,
-    clinician_id UUID NOT NULL REFERENCES clinician(id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    UNIQUE (cohort_id, clinician_id)
-);
-
--- Diary Table
+-- Update Diary Table
 CREATE TABLE diary (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    patient_id UUID NOT NULL REFERENCES profile(id),
     name TEXT NOT NULL,
     description TEXT,
-    duration_days INT, -- NULL for personal diaries
+    duration_days INT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    CHECK (duration_days > 0 OR duration_days IS NULL),
-    UNIQUE (user_id, name)
+    CHECK (duration_days > 0 OR duration_days IS NULL)
 );
 
 -- Aspect Table
@@ -101,7 +82,7 @@ CREATE TABLE entry (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     aspect_id UUID NOT NULL REFERENCES aspect(id) ON DELETE CASCADE,
     diary_id UUID NOT NULL REFERENCES diary(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    patient_id UUID NOT NULL REFERENCES profile(id) ON DELETE CASCADE,
     entry_date DATE NOT NULL,
     content_text TEXT, -- For 'text' type aspects
     content_scale INT CHECK (content_scale BETWEEN 1 AND 10), -- For 'scale' type aspects
@@ -113,26 +94,82 @@ CREATE TABLE entry (
     )
 );
 
+-- Add profile creation trigger
+CREATE OR REPLACE FUNCTION create_profile_for_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO profile (id, role, name, email)
+    VALUES (NEW.id, NEW.raw_user_meta_data->>'role', NEW.raw_user_meta_data->>'name', NEW.email);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create Trigger on auth.users
+CREATE OR REPLACE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION create_profile_for_user();
+
+-- Update RLS Policies for the new structure
+ALTER TABLE profile ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own profile
+CREATE POLICY "Users can view their own profile"
+    ON profile FOR SELECT
+    USING (auth.uid() = id);
+
+-- Clinicians can view profiles in their cohorts
+CREATE POLICY "Clinicians can view profiles in their cohorts"
+    ON profile FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM cohort_member cm
+            JOIN cohort c ON cm.cohort_id = c.id
+            WHERE c.clinician_id = auth.uid()
+            AND cm.patient_id = profile.id
+        )
+    );
+
 -- 4. Create Trigger Functions and Triggers
 
--- Trigger Function to Ensure Cohort Owner is a Clinician
-CREATE OR REPLACE FUNCTION verify_cohort_owner()
+-- Role validation triggers
+CREATE OR REPLACE FUNCTION verify_clinician_role()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM clinician WHERE id = NEW.owner_id
+        SELECT 1 FROM profile 
+        WHERE profile.id = NEW.clinician_id 
+        AND profile.role = 'clinician'
     ) THEN
-        RAISE EXCEPTION 'Cohort owner must be a valid clinician';
+        RAISE EXCEPTION 'Only clinicians can own cohorts';
     END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Create Trigger on Cohort Table
-CREATE TRIGGER check_cohort_owner
-BEFORE INSERT OR UPDATE ON cohort
-FOR EACH ROW
-EXECUTE FUNCTION verify_cohort_owner();
+CREATE TRIGGER ensure_clinician_role
+    BEFORE INSERT OR UPDATE ON cohort
+    FOR EACH ROW
+    EXECUTE FUNCTION verify_clinician_role();
+
+-- For Diary table
+CREATE OR REPLACE FUNCTION verify_diary_patient_role()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM profile 
+        WHERE profile.id = NEW.patient_id 
+        AND profile.role = 'patient'
+    ) THEN
+        RAISE EXCEPTION 'Only patients can own diaries';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER ensure_diary_patient_role
+    BEFORE INSERT OR UPDATE ON diary
+    FOR EACH ROW
+    EXECUTE FUNCTION verify_diary_patient_role();
 
 -- Trigger Function to Ensure Entry Data Type Consistency
 CREATE OR REPLACE FUNCTION verify_entry_data_type()
@@ -171,69 +208,39 @@ FOR EACH ROW
 EXECUTE FUNCTION verify_entry_data_type();
 
 -- 5. Enable Row Level Security on All Relevant Tables
-ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE clinician ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profile ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cohort ENABLE ROW LEVEL SECURITY;
-ALTER TABLE cohort_user ENABLE ROW LEVEL SECURITY;
-ALTER TABLE cohort_clinician ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cohort_member ENABLE ROW LEVEL SECURITY;
 ALTER TABLE diary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE aspect ENABLE ROW LEVEL SECURITY;
 ALTER TABLE entry ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create Row Level Security (RLS) Policies
 
--- Users Table RLS Policies
-
 -- Users can view their own records
 CREATE POLICY "Users can view their own data"
-    ON "user"
+    ON profile
     FOR SELECT
     USING (id = auth.uid());
 
 -- Users can update their own records
 CREATE POLICY "Users can update their own data"
-    ON "user"
+    ON profile
     FOR UPDATE
     USING (id = auth.uid());
 
 -- Clinicians can view users assigned to their cohorts
 CREATE POLICY "Clinicians can view assigned users"
-    ON "user"
+    ON profile
     FOR SELECT
     USING (
         EXISTS (
-            SELECT 1 FROM cohort_user
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
-            WHERE cohort_user.user_id = "user".id
-              AND cohort.owner_id = auth.uid()
+            SELECT 1 FROM cohort_member cm
+            JOIN cohort c ON cm.cohort_id = c.id
+            WHERE cm.patient_id = profile.id
+              AND c.clinician_id = auth.uid()
         )
     );
-
--- Clinician Table RLS Policies
-
--- Clinicians can view their own records
-CREATE POLICY "Clinicians can view their own data"
-    ON clinician
-    FOR SELECT
-    USING (id = auth.uid());
-
--- Clinicians can update their own records
-CREATE POLICY "Clinicians can update their own data"
-    ON clinician
-    FOR UPDATE
-    USING (id = auth.uid());
-
--- Prevent clinicians from viewing other clinicians' data
-CREATE POLICY "Prevent clinicians from viewing others' data"
-    ON clinician
-    FOR SELECT
-    USING (id = auth.uid());
-
--- Prevent clinicians from updating other clinicians' data
-CREATE POLICY "Prevent clinicians from updating others' data"
-    ON clinician
-    FOR UPDATE
-    USING (id = auth.uid());
 
 -- Cohort Table RLS Policies
 
@@ -241,51 +248,31 @@ CREATE POLICY "Prevent clinicians from updating others' data"
 CREATE POLICY "Cohort owner can manage the cohort"
     ON cohort
     FOR ALL
-    USING (owner_id = auth.uid());
+    USING (clinician_id = auth.uid());
 
 -- Clinicians can view cohorts they own
 CREATE POLICY "Clinicians can view cohorts they own"
     ON cohort
     FOR SELECT
-    USING (owner_id = auth.uid());
+    USING (clinician_id = auth.uid());
 
--- Cohort_User Table RLS Policies
+-- Cohort_Member Table RLS Policies
 
 -- Cohort owners can manage their own cohort memberships
 CREATE POLICY "Cohort owner can manage users in their cohort"
-    ON cohort_user
+    ON cohort_member
     FOR ALL
     USING (
         EXISTS (
             SELECT 1 FROM cohort
-            WHERE cohort.id = cohort_user.cohort_id
-              AND cohort.owner_id = auth.uid()
+            WHERE cohort.id = cohort_member.cohort_id
+              AND cohort.clinician_id = auth.uid()
         )
     );
 
 -- Prevent regular users from accessing cohort memberships
 CREATE POLICY "No access for users to cohort memberships"
-    ON cohort_user
-    FOR ALL
-    USING (false);
-
--- Cohort_Clinician Table RLS Policies
-
--- Cohort owners can manage their own cohort's clinicians
-CREATE POLICY "Cohort owner can manage clinicians in their cohort"
-    ON cohort_clinician
-    FOR ALL
-    USING (
-        EXISTS (
-            SELECT 1 FROM cohort
-            WHERE cohort.id = cohort_clinician.cohort_id
-              AND cohort.owner_id = auth.uid()
-        )
-    );
-
--- Prevent regular users from accessing cohort clinician memberships
-CREATE POLICY "No access for users to cohort clinician memberships"
-    ON cohort_clinician
+    ON cohort_member
     FOR ALL
     USING (false);
 
@@ -295,19 +282,19 @@ CREATE POLICY "No access for users to cohort clinician memberships"
 CREATE POLICY "Users can access their own diaries"
     ON diary
     FOR SELECT
-    USING (user_id = auth.uid());
+    USING (patient_id = auth.uid());
 
 -- Users can insert their own diaries
 CREATE POLICY "Users can insert their own diaries"
     ON diary
     FOR INSERT
-    WITH CHECK (user_id = auth.uid());
+    WITH CHECK (patient_id = auth.uid());
 
 -- Users can update their own diaries
 CREATE POLICY "Users can update their own diaries"
     ON diary
     FOR UPDATE
-    USING (user_id = auth.uid());
+    USING (patient_id = auth.uid());
 
 -- Clinicians can access diaries of users in their cohorts
 CREATE POLICY "Clinicians can access diaries of users in their cohorts"
@@ -315,10 +302,10 @@ CREATE POLICY "Clinicians can access diaries of users in their cohorts"
     FOR SELECT
     USING (
         EXISTS (
-            SELECT 1 FROM cohort_user
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
-            WHERE cohort_user.user_id = diary.user_id
-              AND cohort.owner_id = auth.uid()
+            SELECT 1 FROM cohort_member cm
+            JOIN cohort c ON cm.cohort_id = c.id
+            WHERE cm.patient_id = diary.patient_id
+              AND c.clinician_id = auth.uid()
         )
     );
 
@@ -328,10 +315,10 @@ CREATE POLICY "Clinicians can insert diaries for users in their cohorts"
     FOR INSERT
     WITH CHECK (
         EXISTS (
-            SELECT 1 FROM cohort_user
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
-            WHERE cohort_user.user_id = diary.user_id
-              AND cohort.owner_id = auth.uid()
+            SELECT 1 FROM cohort_member cm
+            JOIN cohort c ON cm.cohort_id = c.id
+            WHERE cm.patient_id = diary.patient_id
+              AND c.clinician_id = auth.uid()
         )
     );
 
@@ -341,10 +328,10 @@ CREATE POLICY "Clinicians can update diaries of users in their cohorts"
     FOR UPDATE
     USING (
         EXISTS (
-            SELECT 1 FROM cohort_user
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
-            WHERE cohort_user.user_id = diary.user_id
-              AND cohort.owner_id = auth.uid()
+            SELECT 1 FROM cohort_member cm
+            JOIN cohort c ON cm.cohort_id = c.id
+            WHERE cm.patient_id = diary.patient_id
+              AND c.clinician_id = auth.uid()
         )
     );
 
@@ -358,7 +345,7 @@ CREATE POLICY "Users can access aspects in their own diaries"
         EXISTS (
             SELECT 1 FROM diary
             WHERE diary.id = aspect.diary_id
-              AND diary.user_id = auth.uid()
+              AND diary.patient_id = auth.uid()
         )
     );
 
@@ -370,7 +357,7 @@ CREATE POLICY "Users can insert aspects in their own diaries"
         EXISTS (
             SELECT 1 FROM diary
             WHERE diary.id = aspect.diary_id
-              AND diary.user_id = auth.uid()
+              AND diary.patient_id = auth.uid()
         )
     );
 
@@ -382,7 +369,7 @@ CREATE POLICY "Users can update aspects in their own diaries"
         EXISTS (
             SELECT 1 FROM diary
             WHERE diary.id = aspect.diary_id
-              AND diary.user_id = auth.uid()
+              AND diary.patient_id = auth.uid()
         )
     );
 
@@ -393,10 +380,10 @@ CREATE POLICY "Clinicians can access aspects of users in their cohorts' diaries"
     USING (
         EXISTS (
             SELECT 1 FROM diary
-            JOIN cohort_user ON cohort_user.user_id = diary.user_id
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
+            JOIN cohort_member cm ON cm.patient_id = diary.patient_id
+            JOIN cohort c ON cm.cohort_id = c.id
             WHERE diary.id = aspect.diary_id
-              AND cohort.owner_id = auth.uid()
+              AND c.clinician_id = auth.uid()
         )
     );
 
@@ -407,10 +394,10 @@ CREATE POLICY "Clinicians can insert aspects in users' cohorts' diaries"
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM diary
-            JOIN cohort_user ON cohort_user.user_id = diary.user_id
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
+            JOIN cohort_member cm ON cm.patient_id = diary.patient_id
+            JOIN cohort c ON cm.cohort_id = c.id
             WHERE diary.id = aspect.diary_id
-              AND cohort.owner_id = auth.uid()
+              AND c.clinician_id = auth.uid()
         )
     );
 
@@ -421,10 +408,10 @@ CREATE POLICY "Clinicians can update aspects in users' cohorts' diaries"
     USING (
         EXISTS (
             SELECT 1 FROM diary
-            JOIN cohort_user ON cohort_user.user_id = diary.user_id
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
+            JOIN cohort_member cm ON cm.patient_id = diary.patient_id
+            JOIN cohort c ON cm.cohort_id = c.id
             WHERE diary.id = aspect.diary_id
-              AND cohort.owner_id = auth.uid()
+              AND c.clinician_id = auth.uid()
         )
     );
 
@@ -434,25 +421,25 @@ CREATE POLICY "Clinicians can update aspects in users' cohorts' diaries"
 CREATE POLICY "Users can access their own entries"
     ON entry
     FOR SELECT
-    USING (user_id = auth.uid());
+    USING (patient_id = auth.uid());
 
 -- Users can insert their own entries
 CREATE POLICY "Users can insert their own entries"
     ON entry
     FOR INSERT
-    WITH CHECK (user_id = auth.uid());
+    WITH CHECK (patient_id = auth.uid());
 
 -- Users can update their own entries
 CREATE POLICY "Users can update their own entries"
     ON entry
     FOR UPDATE
-    USING (user_id = auth.uid());
+    USING (patient_id = auth.uid());
 
 -- Users can delete their own entries
 CREATE POLICY "Users can delete their own entries"
     ON entry
     FOR DELETE
-    USING (user_id = auth.uid());
+    USING (patient_id = auth.uid());
 
 -- Clinicians can access entries of users in their cohorts' diaries
 CREATE POLICY "Clinicians can access entries of users in their cohorts' diaries"
@@ -461,10 +448,10 @@ CREATE POLICY "Clinicians can access entries of users in their cohorts' diaries"
     USING (
         EXISTS (
             SELECT 1 FROM diary
-            JOIN cohort_user ON cohort_user.user_id = diary.user_id
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
+            JOIN cohort_member cm ON cm.patient_id = diary.patient_id
+            JOIN cohort c ON cm.cohort_id = c.id
             WHERE diary.id = entry.diary_id
-              AND cohort.owner_id = auth.uid()
+              AND c.clinician_id = auth.uid()
         )
     );
 
@@ -475,10 +462,10 @@ CREATE POLICY "Clinicians can insert entries for users in their cohorts' diaries
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM diary
-            JOIN cohort_user ON cohort_user.user_id = diary.user_id
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
+            JOIN cohort_member cm ON cm.patient_id = diary.patient_id
+            JOIN cohort c ON cm.cohort_id = c.id
             WHERE diary.id = entry.diary_id
-              AND cohort.owner_id = auth.uid()
+              AND c.clinician_id = auth.uid()
         )
     );
 
@@ -489,10 +476,10 @@ CREATE POLICY "Clinicians can update entries of users in their cohorts' diaries"
     USING (
         EXISTS (
             SELECT 1 FROM diary
-            JOIN cohort_user ON cohort_user.user_id = diary.user_id
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
+            JOIN cohort_member cm ON cm.patient_id = diary.patient_id
+            JOIN cohort c ON cm.cohort_id = c.id
             WHERE diary.id = entry.diary_id
-              AND cohort.owner_id = auth.uid()
+              AND c.clinician_id = auth.uid()
         )
     );
 
@@ -503,25 +490,21 @@ CREATE POLICY "Clinicians can delete entries of users in their cohorts' diaries"
     USING (
         EXISTS (
             SELECT 1 FROM diary
-            JOIN cohort_user ON cohort_user.user_id = diary.user_id
-            JOIN cohort ON cohort_user.cohort_id = cohort.id
+            JOIN cohort_member cm ON cm.patient_id = diary.patient_id
+            JOIN cohort c ON cm.cohort_id = c.id
             WHERE diary.id = entry.diary_id
-              AND cohort.owner_id = auth.uid()
+              AND c.clinician_id = auth.uid()
         )
     );
 
 -- 7. Create Indexes for Performance Optimization
 
--- Indexes for cohort_user
-CREATE INDEX IF NOT EXISTS idx_cohort_user_cohort_id ON cohort_user(cohort_id);
-CREATE INDEX IF NOT EXISTS idx_cohort_user_user_id ON cohort_user(user_id);
-
--- Indexes for cohort_clinician
-CREATE INDEX IF NOT EXISTS idx_cohort_clinician_cohort_id ON cohort_clinician(cohort_id);
-CREATE INDEX IF NOT EXISTS idx_cohort_clinician_clinician_id ON cohort_clinician(clinician_id);
+-- Indexes for cohort_member
+CREATE INDEX IF NOT EXISTS idx_cohort_member_cohort_id ON cohort_member(cohort_id);
+CREATE INDEX IF NOT EXISTS idx_cohort_member_patient_id ON cohort_member(patient_id);
 
 -- Index for diary
-CREATE INDEX IF NOT EXISTS idx_diary_user_id ON diary(user_id);
+CREATE INDEX IF NOT EXISTS idx_diary_patient_id ON diary(patient_id);
 
 -- Index for aspect
 CREATE INDEX IF NOT EXISTS idx_aspect_diary_id ON aspect(diary_id);
@@ -529,4 +512,4 @@ CREATE INDEX IF NOT EXISTS idx_aspect_diary_id ON aspect(diary_id);
 -- Index for entry
 CREATE INDEX IF NOT EXISTS idx_entry_aspect_id ON entry(aspect_id);
 CREATE INDEX IF NOT EXISTS idx_entry_diary_id ON entry(diary_id);
-CREATE INDEX IF NOT EXISTS idx_entry_user_id ON entry(user_id);
+CREATE INDEX IF NOT EXISTS idx_entry_patient_id ON entry(patient_id);
