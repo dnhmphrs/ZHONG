@@ -21,6 +21,7 @@
 	export let data;
 	let Geometry;
 	let authState;
+	let fontsLoaded = false;
 
 	auth.subscribe(state => {
 		authState = state;
@@ -71,6 +72,11 @@
 	onMount(() => {
 		auth.initializeAuth();
 
+		// Check if fonts are loaded
+		document.fonts.ready.then(() => {
+			fontsLoaded = true;
+		});
+
 		// webgl - 
 		// const module = await import('$lib/graphics/webgl.svelte');
 		// Geometry = module.default;
@@ -112,7 +118,7 @@
 	/>
 </svelte:head>
 
-{#if !authState?.initialized}
+{#if !authState?.initialized || !fontsLoaded}
 	<div class="loading">Loading...</div>
 {:else}
 	<div class="app">
@@ -143,6 +149,8 @@
 		width: 100%;
 		overflow: hidden;
 		background: var(--background);
+		opacity: 0;
+		animation: fadeIn 0.3s ease-in forwards;
 	}
 
 	.loading {
@@ -151,6 +159,13 @@
 		align-items: center;
 		height: 100vh;
 		width: 100vw;
+		opacity: 0;
+		animation: fadeIn 0.3s ease-in forwards;
+	}
+
+	@keyframes fadeIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
 	}
 
 	main {

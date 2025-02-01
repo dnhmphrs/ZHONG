@@ -1,6 +1,10 @@
 @import 'normalize.css';
 @import '$lib/styles/fonts.css';
 
+.fonts-unloaded * {
+	opacity: 0;
+}
+
 :root {
 	--font-header: nb-architekt, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	--font-body: nb-architekt, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
