@@ -1,151 +1,201 @@
-import { RectAreaLight } from "three";
-import { get } from "svelte/store";
-import { supabase } from "./supabaseClient.js";
-import { sessionID, playerID, pFencedTiles, boardOccupiedTiles } from "$lib/store/pentominos.js"
-import { leaderboard } from "$lib/store/data.js";
+import { supabase } from './supabase';
 
-const BACKEND_URL = 'TODO';
-
-/*
-async function fetchLeaderboard(orderID) {
-	const response = await fetch(`${BACKEND_URL}/getleaderboard/${orderID}/`, {
-		method: 'GET',
-		//mode: 'no-cors',
-		headers: {
-			//'Content-Type': 'multipart/form-data'
-			'Content-Type': 'application/json'
-			// Add the API Key here if required in the future
-			// 'x-api-key': 'YOUR_API_KEY'
-		},
-		body: JSON.stringify({ orderID })
-	});
-
-	if (!response.ok) {
-		throw new Error(`Error: ${response.status}`);
-	}
-
-	const data = await response.json();
-	console.log(response);
-	return data;
-}
-*/
-
-async function fetchLeaderboard(orderID) {
-	let { data: leaderboard, error } = await supabase
-		.from('leaderboard')
-		.select('name, orderID, playerID, country, area')
-		.eq('orderID', orderID)
-		.order('area', { ascending: false });
-		return leaderboard;
+// Authentication & User Management
+export async function signInUser(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+    });
+    return { data, error };
 }
 
-/*
-async function postResults(experiment, orderID, area) {
-	const payload = {
-		//sessionID,
-		EXPERIMENT: experiment,
-		orderID: orderID,
-		RECORDTABLE: area
-		//SESSION: session,
-		//TEAM: team
-	};
+export async function signUpUser(name, email, password) {
+    // First create the auth user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password
+    });
+    
+    if (authError) return { error: authError };
 
-	const response = await fetch(`${BACKEND_URL}/postresults`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-			// 'x-api-key': 'YOUR_API_KEY' // Uncomment and replace YOUR_API_KEY when API key is required
-		},
-		body: JSON.stringify(payload)
-	});
+    // Then create the user profile
+    const { data, error } = await supabase
+        .from('user')
+        .insert([{ id: authData.user.id, name, email, password }]);
 
-	if (!response.ok) {
-		throw new Error(`Error: ${response.status}`);
-	}
-
-	const data = await response.json();
-	return data;
-}
-*/
-
-async function postResults(orderID, area, playerID, country, resultString) {
-
-	let payload = { 
-		orderID: orderID, 
-		sessionID: Math.floor(get(sessionID)*100000),
-		area: area,
-		name: 'Unknown', 
-		country: country,
-		playerID: playerID,
-		resultString: resultString
-	}
-
-	console.log(payload);
-
-	try{
-	const { data, error } = await supabase
-		.from('leaderboard')
-		.insert(payload).select();
-		console.log(data);
-		}
-		catch(error)
-		{
-			console.error(error.message);
-		}
-	
-		let leaderboard_data = await fetchLeaderboard(orderID);
-		leaderboard.set(leaderboard_data);
+    return { data, error };
 }
 
-async function fetchPlayerIDs()
-{
-	let { data: playerIDs, error } = await supabase
-	.from('leaderboard')
-	.select('playerID')
-	return playerIDs;
+export async function signInClinician(email, password) {
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+    });
+    
+    if (authError) return { error: authError };
+
+    // Verify the user is actually a clinician
+    const { data, error } = await supabase
+        .from('clinician')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+    return { data, error };
 }
 
-async function setNewPlayerID()
-{
-	let usedIDs = await fetchPlayerIDs();
-	let newID = Math.floor(Math.random()*100000000);
-	console.log(usedIDs);
-	while (usedIDs.includes(newID))
-	{
-		newID = Math.floor(Math.random()*100000000);
-	}
-	playerID.set(newID);
+export async function signOut() {
+    const { error } = await supabase.auth.signOut();
+    return { error };
 }
 
+// Cohort Management
+export async function createCohort(name, description) {
+    const { data, error } = await supabase
+        .from('cohort')
+        .insert([{ name, description }]);
+    return { data, error };
+}
 
-export { fetchLeaderboard, postResults, setNewPlayerID };
+export async function getCohorts() {
+    const { data, error } = await supabase
+        .from('cohort')
+        .select('*');
+    return { data, error };
+}
 
+export async function addUserToCohort(cohortId, userId) {
+    const { data, error } = await supabase
+        .from('cohort_user')
+        .insert([{ cohort_id: cohortId, user_id: userId }]);
+    return { data, error };
+}
 
+export async function addClinicianToCohort(cohortId, clinicianId) {
+    const { data, error } = await supabase
+        .from('cohort_clinician')
+        .insert([{ cohort_id: cohortId, clinician_id: clinicianId }]);
+    return { data, error };
+}
 
-// EXAMPLE CODE TO CALL THESE ENDPOINTS
+// Diary Management
+export async function createDiary(userId, name, description, durationDays = null) {
+    const { data, error } = await supabase
+        .from('diary')
+        .insert([{ 
+            user_id: userId,
+            name,
+            description,
+            duration_days: durationDays
+        }]);
+    return { data, error };
+}
 
-// <script>
-// import { onMount } from 'svelte';
-// import { fetchLeaderboard, postResults } from './api.js';
-//
-// let leaderboard = [];
-//
-// onMount(async () => {
-//   try {
-//     leaderboard = await fetchLeaderboard('ED9C2565');
-//     console.log(leaderboard);
-//   } catch (error) {
-//     console.error(error.message);
-//   }
-// });
-//
-// Example function call for postResults (you'll need to provide the actual data)
-// async function submitResults() {
-//   try {
-//     const result = await postResults(/* sessionID, experiment, order, recordTable, session, team */);
-//     console.log(result);
-//   } catch (error) {
-//     console.error(error.message);
-//   }
-// }
-// </script>
+export async function getDiaries(userId) {
+    const { data, error } = await supabase
+        .from('diary')
+        .select('*')
+        .eq('user_id', userId);
+    return { data, error };
+}
+
+// Aspect Management
+export async function createAspect(diaryId, name, frequencyDays, dataType, displayOrder = 0) {
+    const { data, error } = await supabase
+        .from('aspect')
+        .insert([{
+            diary_id: diaryId,
+            name,
+            frequency_days: frequencyDays,
+            data_type: dataType,
+            display_order: displayOrder
+        }]);
+    return { data, error };
+}
+
+export async function getAspects(diaryId) {
+    const { data, error } = await supabase
+        .from('aspect')
+        .select('*')
+        .eq('diary_id', diaryId)
+        .order('display_order');
+    return { data, error };
+}
+
+// Entry Management
+export async function createEntry(aspectId, diaryId, userId, entryDate, content) {
+    const { data: aspectData, error: aspectError } = await supabase
+        .from('aspect')
+        .select('data_type')
+        .eq('id', aspectId)
+        .single();
+
+    if (aspectError) return { error: aspectError };
+
+    const entryData = {
+        aspect_id: aspectId,
+        diary_id: diaryId,
+        user_id: userId,
+        entry_date: entryDate,
+        content_text: aspectData.data_type === 'text' ? content : null,
+        content_scale: aspectData.data_type === 'scale' ? content : null
+    };
+
+    const { data, error } = await supabase
+        .from('entry')
+        .insert([entryData]);
+
+    return { data, error };
+}
+
+export async function getEntries(diaryId, userId, startDate, endDate) {
+    const query = supabase
+        .from('entry')
+        .select(`
+            *,
+            aspect:aspect_id (
+                name,
+                data_type,
+                frequency_days
+            )
+        `)
+        .eq('diary_id', diaryId)
+        .eq('user_id', userId);
+
+    if (startDate) query.gte('entry_date', startDate);
+    if (endDate) query.lte('entry_date', endDate);
+
+    const { data, error } = await query;
+    return { data, error };
+}
+
+export async function updateEntry(entryId, content) {
+    const { data: entryData, error: fetchError } = await supabase
+        .from('entry')
+        .select('aspect:aspect_id(data_type)')
+        .eq('id', entryId)
+        .single();
+
+    if (fetchError) return { error: fetchError };
+
+    const updateData = {
+        content_text: entryData.aspect.data_type === 'text' ? content : null,
+        content_scale: entryData.aspect.data_type === 'scale' ? content : null,
+        updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+        .from('entry')
+        .update(updateData)
+        .eq('id', entryId);
+
+    return { data, error };
+}
+
+export async function deleteEntry(entryId) {
+    const { data, error } = await supabase
+        .from('entry')
+        .delete()
+        .eq('id', entryId);
+    return { data, error };
+}
