@@ -16,15 +16,26 @@
 	import { supabase } from '$lib/backend/supabase';
 	import { invalidate, goto } from '$app/navigation';
 	import { writable } from 'svelte/store';
+	import { auth } from '$lib/store/auth';
 
 	export let data;
 	let Geometry;
-	let initialized = false;
-	let session = null;
-	let profile = null;
+	let authState;
 
-	// Create a store for auth state that's accessible to child routes
-	export const authStore = writable({ session: null, profile: null });
+	auth.subscribe(state => {
+		authState = state;
+		// Handle localStorage in the component
+		if (authState?.profile?.role === 'clinician' && typeof window !== 'undefined') {
+			if (authState.viewPreference) {
+				localStorage.setItem('viewPreference', authState.viewPreference);
+			} else {
+				const stored = localStorage.getItem('viewPreference');
+				if (stored) {
+					authState.viewPreference = stored;
+				}
+			}
+		}
+	});
 
 	$: if (browser && data?.analyticsId) {
 		webVitals({
@@ -43,74 +54,26 @@
 		isIframe.set(window.location !== window.parent.location);
 	}
 
-	async function initializeAuth() {
-		const { data: { session: authSession } } = await supabase.auth.getSession();
-		console.log('initializeAuth session:', authSession);
-		if (authSession) {
-			const { data: profileData } = await supabase
-				.from('profile')
-				.select('role')
-				.eq('id', authSession.user.id)
-				.single();
-			
-			console.log('initializeAuth profile:', profileData);
-			session = authSession;
-			profile = profileData;
-			authStore.set({ 
-				session: {
-					user: authSession.user,
-					role: profileData.role
-				}, 
-				profile: profileData 
-			});
-		}
-		initialized = true;
-	}
-
-	// Only check protected routes after initialization AND when we have definitive auth state
-	$: if (initialized) {
+	$: if (authState?.initialized) {
 		const isProtectedRoute = $page.url.pathname.startsWith('/diary') || 
 								$page.url.pathname.startsWith('/clinician');
 		
-		if (isProtectedRoute && !session) {
+		if (isProtectedRoute && !authState.session) {
 			goto('/login');
-		} else if (profile?.role === 'patient' && $page.url.pathname.startsWith('/clinician')) {
+		} else if (
+			(authState.profile?.role === 'patient' || authState.viewPreference === 'personal') && 
+			$page.url.pathname.startsWith('/clinician')
+		) {
 			goto('/diary');
 		}
 	}
 
-	onMount(async () => {
-		await initializeAuth();
-
-		// Listen for auth changes
-		const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-			// Reset initialized state for sign out
-			if (event === 'SIGNED_OUT') {
-				session = null;
-				profile = null;
-				authStore.set({ session: null, profile: null });
-				goto('/login');
-				return;
-			}
-
-			session = newSession;
-			if (session) {
-				const { data: profileData } = await supabase
-					.from('profile')
-					.select('role')
-					.eq('id', session.user.id)
-					.single();
-				profile = profileData;
-				authStore.set({ session, profile });
-			} else {
-				profile = null;
-				authStore.set({ session: null, profile: null });
-			}
-		});
+	onMount(() => {
+		auth.initializeAuth();
 
 		// webgl
-		const module = await import('$lib/graphics/webgl.svelte');
-		Geometry = module.default;
+		// const module = await import('$lib/graphics/webgl.svelte');
+		// Geometry = module.default;
 
 		// Remove these lines since fetchLeaderboard is commented out
 		// let leader = fetchLeaderboard();
@@ -121,7 +84,6 @@
 
 		return () => {
 			window.removeEventListener('resize', () => handleScreen());
-			subscription.unsubscribe();
 		};
 	});
 </script>
@@ -134,18 +96,19 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </svelte:head>
 
-{#if !initialized}
+{#if !authState?.initialized}
 	<div class="loading">Loading...</div>
 {:else}
 	<div class="app">
 		<Header 
 			data={{ 
-				session: session ? {
-					user: session.user,
-					role: profile?.role
+				session: authState.session ? {
+					user: authState.session.user,
+					role: authState.profile?.role,
+					viewPreference: authState.viewPreference
 				} : null
 			}} 
-			{initialized}
+			initialized={authState.initialized}
 		/>
 		<main>
 			<slot />

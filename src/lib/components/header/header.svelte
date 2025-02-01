@@ -9,13 +9,15 @@
 	
 	$: {
 		console.log('Header data:', data);
-		console.log('Header initialized:', initialized);
 		console.log('Header userRole:', data?.session?.role);
-		console.log('Header isAuthenticated:', !!data?.session?.user);
+		console.log('Header viewPreference:', data?.session?.viewPreference);
+		console.log('Header showClinicalFeatures:', showClinicalFeatures);
 	}
 
 	$: userRole = data?.session?.role;
+	$: viewPreference = data?.session?.viewPreference;
 	$: isAuthenticated = !!data?.session?.user;
+	$: showClinicalFeatures = isAuthenticated && userRole === 'clinician' && viewPreference === 'clinical';
 
 	async function signOut() {
 		const { error } = await supabase.auth.signOut();
@@ -29,13 +31,11 @@
 	<h2>IOTA</h2>
 	<div class="nav">
 		{#if initialized && isAuthenticated}
-			<!-- Show clinician features if user is a clinician -->
-			{#if userRole === 'clinician'}
+			{#if showClinicalFeatures}
 				<a href="/clinician/patients">patients</a>
 				<a href="/clinician/cohorts">cohorts</a>
 				<a href="/clinician/analytics">analytics</a>
 			{/if}
-			<!-- Show patient features for all users -->
 			<a href="/diary">my diary</a>
 			<button on:click={signOut}>sign out</button>
 		{/if}

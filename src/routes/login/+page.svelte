@@ -1,31 +1,17 @@
 <script>
-    import { signInUser, signInClinician } from '$lib/backend/api';
-    import { goto } from '$app/navigation';
+    import { auth } from '$lib/store/auth';
 
     let email = '';
     let password = '';
     let loading = false;
     let error = null;
-    let isClinician = false;
+    let clinicalView = false;
 
     async function handleLogin() {
         try {
             loading = true;
             error = null;
-            
-            // Try to sign in based on user type
-            const { data, error: authError } = isClinician 
-                ? await signInClinician(email, password)
-                : await signInUser(email, password);
-
-            if (authError) throw authError;
-
-            // Redirect based on user type
-            if (isClinician) {
-                goto('/clinician');
-            } else {
-                goto('/diary');
-            }
+            await auth.signIn(email, password, clinicalView);
         } catch (e) {
             error = e.message;
         } finally {
@@ -44,29 +30,29 @@
 
         <div class="form-group">
             <label for="email">Email</label>
-            <input 
-                type="email" 
+            <input
+                type="email"
                 id="email" 
-                bind:value={email} 
+                bind:value={email}
                 required
             />
         </div>
-
+        
         <div class="form-group">
             <label for="password">Password</label>
-            <input 
-                type="password" 
+            <input
+                type="password"
                 id="password" 
-                bind:value={password} 
+                bind:value={password}
                 required
             />
         </div>
 
         <div class="form-group checkbox">
             <label>
-                <input 
-                    type="checkbox" 
-                    bind:checked={isClinician}
+                <input
+                    type="checkbox"
+                    bind:checked={clinicalView}
                 />
                 Login as Clinician
             </label>
