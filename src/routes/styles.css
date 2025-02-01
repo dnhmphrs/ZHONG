@@ -15,6 +15,14 @@
 
 	font-family: var(--font-body);
 	color: var(--color-text);
+
+	--background: #1d1d1d;
+	--background-light: #232323;
+	--background-50: #23232380;
+	--primary: #f0f0f0;
+	--primary-50: #f0f0f040;
+	--accent: #4FD1C5;  /* Subtle teal */
+	--accent-50: #4FD1C580;  /* Semi-transparent teal */
 }
 
 /* :root {
@@ -24,14 +32,6 @@
 	--primary: #232323;
 	--primary-50: #23232340;
 } */
-
-:root {
-	--background: #1d1d1d;
-	--background-light: #232323;
-	--background-50: #23232380;
-	--primary: #f0f0f0;
-	--primary-50: #f0f0f040;
-}
 
 :root {
 	box-sizing: border-box;
@@ -71,14 +71,23 @@ html {
 	-ms-overflow-style: none;
 } */
 
+:focus {
+	outline-color: var(--accent);
+}
+
 ::-moz-selection {
-	color: red;
-	background: yellow;
+	color: var(--background);
+	background: var(--accent);
 }
 
 ::selection {
-	color: red;
-	background: yellow;
+	color: var(--background);
+	background: var(--accent);
+}
+
+button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
 }
 
 h1,
@@ -114,19 +123,96 @@ button {
 	border: 1px solid var(--primary-50);
 	border-radius: 4px;
 	padding: 8px;
+	transition: all 0.2s ease;
+}
+
+/* Primary button style */
+button.primary {
+	background: var(--accent);
+	color: var(--background);
+	border: none;
+}
+
+button.primary:hover {
+	background: var(--accent-50);
+}
+
+/* Regular button hover */
+button:not(.primary):hover {
+	border-color: var(--accent);
+	color: var(--accent);
+}
+
+/* Input focus states */
+input:focus {
+	outline: none;
+	border-color: var(--accent);
+}
+
+/* Range input (slider) styling */
+input[type="range"] {
+	-webkit-appearance: none;
+	background: var(--background-light);
+	border: none;
+	padding: 0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	height: 16px;
+	width: 16px;
+	border-radius: 50%;
+	background: var(--accent);
+	cursor: pointer;
+	margin-top: -6px;
+	z-index: 2;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+	height: 4px;
+	background: linear-gradient(
+		to right,
+		var(--accent) var(--range-progress, 50%),
+		var(--primary-50) var(--range-progress, 50%)
+	);
+	border-radius: 2px;
+}
+
+input[type="range"]:focus {
+	outline: none;
+}
+
+input[type="range"]:focus::-webkit-slider-thumb {
+	box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--accent-50);
+}
+
+/* Firefox styles */
+input[type="range"]::-moz-range-thumb {
+	height: 16px;
+	width: 16px;
+	border-radius: 50%;
+	background: var(--accent);
+	cursor: pointer;
+	border: none;
+	z-index: 2;
+}
+
+input[type="range"]::-moz-range-track {
+	height: 4px;
+	background: linear-gradient(
+		to right,
+		var(--accent) var(--range-progress, 50%),
+		var(--primary-50) var(--range-progress, 50%)
+	);
+	border-radius: 2px;
+}
+
+input[type="range"]:focus::-moz-range-thumb {
+	box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--accent-50);
 }
 
 input::placeholder {
 	color: var(--primary-50);
-}
-
-input:focus {
-	outline: none;
-	border-color: var(--primary);
-}
-
-button:focus:not(:focus-visible) {
-	outline: none;
 }
 
 .visually-hidden {

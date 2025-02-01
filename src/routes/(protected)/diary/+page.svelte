@@ -34,6 +34,9 @@
 		display: flex;
 		gap: 2rem;
 		height: 100%;
+		width: 100%;
+		max-width: 100%;  /* Ensure no overflow */
+		box-sizing: border-box;  /* Include padding in width */
 		padding: 2rem;
 	}
 </style> 

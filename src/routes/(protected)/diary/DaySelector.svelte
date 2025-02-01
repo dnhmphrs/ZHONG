@@ -6,22 +6,23 @@
 	const dispatch = createEventDispatcher();
 	const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 	
-	// Generate dates for display (current date +/- 3 weeks)
-	$: dates = generateDates(selectedDate);
-	$: weeks = groupIntoWeeks(dates);
-	
 	function generateDates(centerDate) {
 		const dates = [];
 		const startDate = new Date(centerDate);
-		startDate.setDate(startDate.getDate() - 21); // 3 weeks back
 		
-		for (let i = 0; i < 42; i++) { // 6 weeks total
+		// Go back 4 weeks and to the nearest Monday
+		startDate.setDate(startDate.getDate() - 28);
+		startDate.setDate(startDate.getDate() - startDate.getDay() + (startDate.getDay() === 0 ? -6 : 1));
+		
+		// Generate 8 weeks (4 before, current, 3 after)
+		for (let i = 0; i < 56; i++) {
 			const date = new Date(startDate);
 			date.setDate(date.getDate() + i);
 			dates.push({
 				date,
-				isNewMonth: date.getDate() === 1 || i === 0,
-				isSelected: isSameDay(date, selectedDate)
+				isToday: isSameDay(date, new Date()),
+				isSelected: isSameDay(date, selectedDate),
+				isCurrentMonth: date.getMonth() === selectedDate.getMonth()
 			});
 		}
 		
@@ -31,10 +32,14 @@
 	function groupIntoWeeks(dates) {
 		const weeks = [];
 		for (let i = 0; i < dates.length; i += 7) {
-			weeks.push(dates.slice(i, i + 7));
+			const week = dates.slice(i, i + 7);
+			weeks.push(week);
 		}
 		return weeks;
 	}
+	
+	$: dates = generateDates(selectedDate);
+	$: weeks = groupIntoWeeks(dates);
 	
 	function isSameDay(d1, d2) {
 		return d1.getDate() === d2.getDate() &&
@@ -45,31 +50,34 @@
 	function selectDate(date) {
 		dispatch('dateSelect', { date });
 	}
+
+	const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 </script>
 
 <div class="calendar">
+	<div class="month-header">
+		{monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}
+	</div>
+	
+	<div class="day-labels">
+		{#each dayLabels as day}
+			<div class="day-label">{day}</div>
+		{/each}
+	</div>
+
 	{#each weeks as week}
 		<div class="week">
-			<div class="month-column">
-				{#if week[0].isNewMonth}
-					<div class="month">
-						{monthNames[week[0].date.getMonth()]}
-					</div>
-				{:else}
-					<div class="month-spacer" />
-				{/if}
-			</div>
-			<div class="days-row">
-				{#each week as { date, isSelected }}
-					<button
-						class="date-button"
-						class:selected={isSelected}
-						on:click={() => selectDate(date)}
-					>
-						{date.getDate()}
-					</button>
-				{/each}
-			</div>
+			{#each week as { date, isSelected, isToday, isCurrentMonth }}
+				<button
+					class="date-button"
+					class:selected={isSelected}
+					class:today={isToday}
+					class:current-month={isCurrentMonth}
+					on:click={() => selectDate(date)}
+				>
+					{date.getDate()}
+				</button>
+			{/each}
 		</div>
 	{/each}
 </div>
@@ -78,47 +86,59 @@
 	.calendar {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		min-width: 320px;
+		width: 280px;
+		min-width: 280px;
 		padding: 1rem;
 		border-right: 1px solid var(--primary-50);
+		gap: 8px;
+	}
+
+	.month-header {
+		text-align: center;
+		font-size: 14px;
+		margin-bottom: 8px;
+	}
+
+	.day-labels {
+		display: flex;
+		gap: 4px;
+		margin-bottom: 4px;
+	}
+
+	.day-label {
+		width: 28px;
+		text-align: center;
+		font-size: 10px;
+		color: var(--primary-50);
 	}
 
 	.week {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-	}
-
-	.month-column {
-		width: 40px;
-	}
-
-	.month {
-		font-size: 12px;
-		color: var(--primary);
-		text-align: right;
-	}
-
-	.month-spacer {
-		height: 16px;
-	}
-
-	.days-row {
 		display: flex;
 		gap: 4px;
 	}
 
 	.date-button {
-		width: 32px;
-		height: 32px;
+		width: 28px;
+		height: 28px;
 		border: 1px solid var(--primary-50);
 		border-radius: 8px;
 		background: var(--background-light);
-		color: var(--primary);
+		color: var(--primary-50);
 		font-size: 12px;
 		cursor: pointer;
 		transition: all 0.2s ease;
+		padding: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.date-button.current-month {
+		color: var(--primary);
+	}
+
+	.date-button.today {
+		border-color: var(--primary);
 	}
 
 	.date-button:hover {
@@ -128,5 +148,6 @@
 	.date-button.selected {
 		background: var(--primary);
 		color: var(--background);
+		border-color: var(--primary);
 	}
 </style> 

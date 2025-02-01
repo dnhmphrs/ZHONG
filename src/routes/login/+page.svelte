@@ -58,7 +58,7 @@
             </label>
         </div>
 
-        <button type="submit" disabled={loading}>
+        <button class="primary" type="submit" disabled={loading}>
             {loading ? 'Loading...' : 'Login'}
         </button>
     </form>
@@ -99,15 +99,13 @@
     button {
         width: 100%;
         padding: 0.75rem;
-        background-color: #4a90e2;
-        color: white;
-        border: none;
         border-radius: 4px;
         cursor: pointer;
     }
 
     button:disabled {
-        background-color: #ccc;
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 
     .error {

@@ -88,11 +88,28 @@ function createAuthStore() {
 
         if (error) throw error;
 
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
             .from('profile')
             .select('role')
             .eq('id', data.session.user.id)
             .single();
+
+        // If no profile exists, create one
+        if (profileError) {
+            const { data: newProfile, error: insertError } = await supabase
+                .from('profile')
+                .insert([{
+                    id: data.session.user.id,
+                    role: 'patient',  // default role
+                    name: email.split('@')[0],  // temporary name
+                    email: email
+                }])
+                .select()
+                .single();
+            
+            if (insertError) throw insertError;
+            profile = newProfile;
+        }
 
         const viewPreference = profile.role === 'clinician' 
             ? (clinicalView ? 'clinical' : 'personal')

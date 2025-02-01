@@ -4,33 +4,32 @@
 -- them with necessary constraints, triggers, RLS policies, and indexes.
 -- ------------------------------------------------------------
 
--- 1. Drop Existing Tables and Types to Allow Re-running the Script Easily
+-- Drop existing tables (in correct order)
 DROP TABLE IF EXISTS entry CASCADE;
+DROP TABLE IF EXISTS diary_aspect CASCADE;
 DROP TABLE IF EXISTS aspect CASCADE;
 DROP TABLE IF EXISTS diary CASCADE;
-DROP TABLE IF EXISTS cohort_clinician CASCADE;
-DROP TABLE IF EXISTS cohort_user CASCADE;
 DROP TABLE IF EXISTS cohort_member CASCADE;
 DROP TABLE IF EXISTS cohort CASCADE;
-DROP TABLE IF EXISTS clinician CASCADE;
-DROP TABLE IF EXISTS "user" CASCADE;
 DROP TABLE IF EXISTS profile CASCADE;
 
+-- Drop existing types
 DROP TYPE IF EXISTS aspect_data_type CASCADE;
 
--- 2. Create Enumerated Types
+-- Enable UUID extension (this is fine as it's a general postgres extension)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create types
 CREATE TYPE aspect_data_type AS ENUM ('text', 'scale');
 
--- 3. Create Tables with Constraints
-
--- Profile table for auth
+-- Create tables
 CREATE TABLE profile (
-    id UUID PRIMARY KEY REFERENCES auth.users,
+    id UUID PRIMARY KEY,
     role TEXT NOT NULL CHECK (role IN ('patient', 'clinician')),
     name TEXT NOT NULL,
     email TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Update Cohort Table
@@ -52,24 +51,25 @@ CREATE TABLE cohort_member (
 );
 
 -- Update Diary Table
-CREATE TABLE diary (
+CREATE TABLE public.diary (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    patient_id UUID NOT NULL REFERENCES profile(id),
+    patient_id UUID NOT NULL REFERENCES public.profile(id),
     name TEXT NOT NULL,
     description TEXT,
-    duration_days INT,
+    start_date DATE NOT NULL,
+    end_date DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    CHECK (duration_days > 0 OR duration_days IS NULL)
+    CHECK (end_date IS NULL OR end_date >= start_date)
 );
 
 -- Aspect Table
-CREATE TABLE aspect (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    diary_id UUID NOT NULL REFERENCES diary(id) ON DELETE CASCADE,
+CREATE TABLE public.aspect (
+    id SERIAL PRIMARY KEY,
+    diary_id UUID NOT NULL REFERENCES public.diary(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     frequency_days INT NOT NULL,
-    data_type aspect_data_type NOT NULL,
+    data_type public.aspect_data_type NOT NULL,
     display_order INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
@@ -78,11 +78,11 @@ CREATE TABLE aspect (
 );
 
 -- Entry Table
-CREATE TABLE entry (
+CREATE TABLE public.entry (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    aspect_id UUID NOT NULL REFERENCES aspect(id) ON DELETE CASCADE,
-    diary_id UUID NOT NULL REFERENCES diary(id) ON DELETE CASCADE,
-    patient_id UUID NOT NULL REFERENCES profile(id) ON DELETE CASCADE,
+    aspect_id INTEGER NOT NULL REFERENCES public.aspect(id) ON DELETE CASCADE,
+    diary_id UUID NOT NULL REFERENCES public.diary(id) ON DELETE CASCADE,
+    patient_id UUID NOT NULL REFERENCES public.profile(id) ON DELETE CASCADE,
     entry_date DATE NOT NULL,
     content_text TEXT, -- For 'text' type aspects
     content_scale INT CHECK (content_scale BETWEEN 1 AND 10), -- For 'scale' type aspects
@@ -94,118 +94,14 @@ CREATE TABLE entry (
     )
 );
 
--- Add profile creation trigger
-CREATE OR REPLACE FUNCTION create_profile_for_user()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO profile (id, role, name, email)
-    VALUES (NEW.id, NEW.raw_user_meta_data->>'role', NEW.raw_user_meta_data->>'name', NEW.email);
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Create Trigger on auth.users
-CREATE OR REPLACE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION create_profile_for_user();
-
--- Update RLS Policies for the new structure
-ALTER TABLE profile ENABLE ROW LEVEL SECURITY;
-
--- Users can view their own profile
-CREATE POLICY "Users can view their own profile"
-    ON profile FOR SELECT
-    USING (auth.uid() = id);
-
--- Clinicians can view profiles in their cohorts
-CREATE POLICY "Clinicians can view profiles in their cohorts"
-    ON profile FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM cohort_member cm
-            JOIN cohort c ON cm.cohort_id = c.id
-            WHERE c.clinician_id = auth.uid()
-            AND cm.patient_id = profile.id
-        )
-    );
-
--- 4. Create Trigger Functions and Triggers
-
--- Role validation triggers
-CREATE OR REPLACE FUNCTION verify_clinician_role()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM profile 
-        WHERE profile.id = NEW.clinician_id 
-        AND profile.role = 'clinician'
-    ) THEN
-        RAISE EXCEPTION 'Only clinicians can own cohorts';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER ensure_clinician_role
-    BEFORE INSERT OR UPDATE ON cohort
-    FOR EACH ROW
-    EXECUTE FUNCTION verify_clinician_role();
-
--- For Diary table
-CREATE OR REPLACE FUNCTION verify_diary_patient_role()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM profile 
-        WHERE profile.id = NEW.patient_id 
-        AND profile.role = 'patient'
-    ) THEN
-        RAISE EXCEPTION 'Only patients can own diaries';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER ensure_diary_patient_role
-    BEFORE INSERT OR UPDATE ON diary
-    FOR EACH ROW
-    EXECUTE FUNCTION verify_diary_patient_role();
-
--- Trigger Function to Ensure Entry Data Type Consistency
-CREATE OR REPLACE FUNCTION verify_entry_data_type()
-RETURNS TRIGGER AS $$
-DECLARE
-    aspect_type aspect_data_type;
-BEGIN
-    SELECT data_type INTO aspect_type FROM aspect WHERE id = NEW.aspect_id;
-    
-    IF aspect_type = 'text' THEN
-        IF NEW.content_text IS NULL THEN
-            RAISE EXCEPTION 'content_text must be provided for text aspects';
-        END IF;
-        IF NEW.content_scale IS NOT NULL THEN
-            RAISE EXCEPTION 'content_scale must be NULL for text aspects';
-        END IF;
-    ELSIF aspect_type = 'scale' THEN
-        IF NEW.content_scale IS NULL THEN
-            RAISE EXCEPTION 'content_scale must be provided for scale aspects';
-        END IF;
-        IF NEW.content_text IS NOT NULL THEN
-            RAISE EXCEPTION 'content_text must be NULL for scale aspects';
-        END IF;
-    ELSE
-        RAISE EXCEPTION 'Unknown aspect data type';
-    END IF;
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Create Trigger on Entry Table
-CREATE TRIGGER check_entry_data_type
-BEFORE INSERT OR UPDATE ON entry
-FOR EACH ROW
-EXECUTE FUNCTION verify_entry_data_type();
+-- Create diary_aspect join table
+CREATE TABLE public.diary_aspect (
+    diary_id UUID REFERENCES public.diary(id) ON DELETE CASCADE,
+    aspect_id INTEGER REFERENCES public.aspect(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    PRIMARY KEY (diary_id, aspect_id)
+);
 
 -- 5. Enable Row Level Security on All Relevant Tables
 ALTER TABLE profile ENABLE ROW LEVEL SECURITY;
@@ -214,6 +110,7 @@ ALTER TABLE cohort_member ENABLE ROW LEVEL SECURITY;
 ALTER TABLE diary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE aspect ENABLE ROW LEVEL SECURITY;
 ALTER TABLE entry ENABLE ROW LEVEL SECURITY;
+ALTER TABLE diary_aspect ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create Row Level Security (RLS) Policies
 
@@ -513,3 +410,9 @@ CREATE INDEX IF NOT EXISTS idx_aspect_diary_id ON aspect(diary_id);
 CREATE INDEX IF NOT EXISTS idx_entry_aspect_id ON entry(aspect_id);
 CREATE INDEX IF NOT EXISTS idx_entry_diary_id ON entry(diary_id);
 CREATE INDEX IF NOT EXISTS idx_entry_patient_id ON entry(patient_id);
+
+-- Only grant permissions for public schema
+GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO postgres, anon, authenticated, service_role;

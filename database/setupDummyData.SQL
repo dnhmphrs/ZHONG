@@ -1,108 +1,69 @@
--- 8. Create Initial Test Users
+-- Clean up existing data in correct order
+DELETE FROM entry;
+DELETE FROM diary_aspect;
+DELETE FROM diary;
+DELETE FROM aspect;
+DELETE FROM cohort_member;
+DELETE FROM cohort;
+DELETE FROM profile;
 
--- First, ensure the extensions we need are enabled
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Create profile for Dan
+INSERT INTO profile (id, role, name, email)
+SELECT 
+    id,
+    'clinician',
+    'Dan',
+    email
+FROM auth.users 
+WHERE email = 'dan@aufbau.io';
 
--- Function to create a test user with auth and profile
-CREATE OR REPLACE FUNCTION create_test_user(
-    _email TEXT,
-    _password TEXT,
-    _name TEXT,
-    _role TEXT
-) RETURNS UUID AS $$
-DECLARE
-    _user_id UUID;
-BEGIN
-    -- Insert into auth.users
-    INSERT INTO auth.users (
-        instance_id,
-        id,
-        aud,
-        role,
-        email,
-        encrypted_password,
-        email_confirmed_at,
-        raw_user_meta_data,
-        created_at,
-        updated_at
-    )
-    VALUES (
-        '00000000-0000-0000-0000-000000000000',
-        uuid_generate_v4(),
-        'authenticated',
-        'authenticated',
-        _email,
-        crypt(_password, gen_salt('bf')),
-        now(),
-        jsonb_build_object(
-            'name', _name,
-            'role', _role
-        ),
-        now(),
-        now()
-    )
-    RETURNING id INTO _user_id;
-    
-    RETURN _user_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Create a diary for dan
+INSERT INTO diary (id, patient_id, name, description, start_date, end_date) VALUES
+    ('d0000000-0000-0000-0000-000000000000', (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), 'Daily Journal', 'Personal wellness tracking', CURRENT_DATE - 30, NULL);
 
--- Create profiles and related data
-DO $$ 
-DECLARE
-    dan_id UUID;
-    dr_smith_id UUID;
-    patient1_id UUID;
-    patient2_id UUID;
-    patient3_id UUID;
-    anxiety_cohort_id UUID;
-    depression_cohort_id UUID;
-    diary1_id UUID;
-    diary2_id UUID;
-    mood_aspect_id UUID;
-    sleep_aspect_id UUID;
-    anxiety_aspect_id UUID;
-BEGIN
-    -- Get Dan's auth user ID
-    SELECT id INTO dan_id 
-    FROM auth.users 
-    WHERE email = 'dan@aufbau.io';
+-- Create base aspects
+INSERT INTO aspect (id, diary_id, name, frequency_days, data_type, display_order) VALUES
+    (1, 'd0000000-0000-0000-0000-000000000000', 'Sleep Quality', 1, 'scale', 1),
+    (2, 'd0000000-0000-0000-0000-000000000000', 'Mood', 1, 'scale', 2),
+    (3, 'd0000000-0000-0000-0000-000000000000', 'Energy Level', 1, 'scale', 3),
+    (4, 'd0000000-0000-0000-0000-000000000000', 'Anxiety Level', 1, 'scale', 4),
+    (5, 'd0000000-0000-0000-0000-000000000000', 'Physical Activity', 1, 'scale', 5),
+    (6, 'd0000000-0000-0000-0000-000000000000', 'Social Interaction', 1, 'scale', 6),
+    (7, 'd0000000-0000-0000-0000-000000000000', 'Notes', 1, 'text', 7),
+    (8, 'd0000000-0000-0000-0000-000000000000', 'Medication Adherence', 1, 'scale', 8),
+    (9, 'd0000000-0000-0000-0000-000000000000', 'Side Effects', 1, 'text', 9),
+    (10, 'd0000000-0000-0000-0000-000000000000', 'Goals', 1, 'text', 10);
 
-    IF dan_id IS NULL THEN
-        RAISE EXCEPTION 'User with email dan@aufbau.io not found in auth.users';
-    END IF;
+-- Associate aspects with the diary
+INSERT INTO diary_aspect (diary_id, aspect_id) VALUES
+    ('d0000000-0000-0000-0000-000000000000', 1),
+    ('d0000000-0000-0000-0000-000000000000', 2),
+    ('d0000000-0000-0000-0000-000000000000', 3),
+    ('d0000000-0000-0000-0000-000000000000', 4),
+    ('d0000000-0000-0000-0000-000000000000', 5),
+    ('d0000000-0000-0000-0000-000000000000', 6),
+    ('d0000000-0000-0000-0000-000000000000', 7),
+    ('d0000000-0000-0000-0000-000000000000', 8),
+    ('d0000000-0000-0000-0000-000000000000', 9),
+    ('d0000000-0000-0000-0000-000000000000', 10);
 
-    -- Create profile
-    INSERT INTO profile (id, role, name, email) VALUES
-        (dan_id, 'clinician', 'Dan', 'dan@aufbau.io');
+-- Insert diary entries
+INSERT INTO entry (diary_id, aspect_id, patient_id, entry_date, content_scale, content_text) VALUES
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 7, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 8, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 3, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 6, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 4, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 3, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 5, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 7, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 6, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 8, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 7, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, NULL, 'Feeling pretty good today, got a lot done.'),
+    ('d0000000-0000-0000-0000-000000000000', 8, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 9, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 9, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, NULL, 'No significant side effects'),
+    ('d0000000-0000-0000-0000-000000000000', 10, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, NULL, 'Complete project milestones');
 
-    -- Create cohorts for Dan
-    INSERT INTO cohort (name, description, clinician_id) VALUES
-        ('Anxiety Study Group', 'Participants in the 2024 anxiety study', dan_id),
-        ('Depression Study Group', 'Long-term depression study participants', dan_id),
-        ('Control Group', 'Control group for comparative studies', dan_id);
-
-    -- Get cohort IDs for later use
-    SELECT id INTO anxiety_cohort_id FROM cohort WHERE name = 'Anxiety Study Group';
-    SELECT id INTO depression_cohort_id FROM cohort WHERE name = 'Depression Study Group';
-
-    -- Create test diary data (only after you've created the actual users through auth)
-    -- Example structure for when you have the patient IDs:
-    /*
-    -- Add patients to cohorts
-    INSERT INTO cohort_member (cohort_id, patient_id) VALUES
-        (anxiety_cohort_id, patient1_id),
-        (anxiety_cohort_id, patient2_id),
-        (depression_cohort_id, patient3_id);
-
-    -- Create diaries for patients
-    INSERT INTO diary (patient_id, name, description, duration_days)
-    VALUES 
-        (patient1_id, 'Anxiety Journal', 'Daily anxiety tracking', 30)
-    RETURNING id INTO diary1_id;
-    */
-
-END $$;
-
--- Clean up
-DROP FUNCTION create_test_user;
+-- Add entries for yesterday
+INSERT INTO entry (diary_id, aspect_id, patient_id, entry_date, content_scale, content_text) VALUES
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, 6, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, 7, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 3, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, 7, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 4, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, 4, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 7, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, NULL, 'Productive day at work');
