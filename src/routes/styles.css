@@ -109,6 +109,20 @@ input,
 button {
 	font-size: inherit;
 	font-family: inherit;
+	background: var(--background-light);
+	color: var(--primary);
+	border: 1px solid var(--primary-50);
+	border-radius: 4px;
+	padding: 8px;
+}
+
+input::placeholder {
+	color: var(--primary-50);
+}
+
+input:focus {
+	outline: none;
+	border-color: var(--primary);
 }
 
 button:focus:not(:focus-visible) {
