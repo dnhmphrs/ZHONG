@@ -94,6 +94,22 @@
 	<meta name="keywords" content="" />
 	<meta name="author" content="IOTA" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	
+	<!-- Preload fonts -->
+	<link 
+		rel="preload" 
+		href="/fonts/NB-Architekt-Pro-Light.woff" 
+		as="font" 
+		type="font/woff" 
+		crossorigin
+	/>
+	<link 
+		rel="preload" 
+		href="/fonts/NB-Architekt-Pro-Bold.woff" 
+		as="font" 
+		type="font/woff" 
+		crossorigin
+	/>
 </svelte:head>
 
 {#if !authState?.initialized}

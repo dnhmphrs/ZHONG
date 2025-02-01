@@ -2,8 +2,8 @@
 @import '$lib/styles/fonts.css';
 
 :root {
-	--font-header: nb-architekt, serif;
-	--font-body: nb-architekt, serif;
+	--font-header: nb-architekt, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	--font-body: nb-architekt, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	--column-width: 42rem;
 	--margin: 20px;
 	--header-height: 46px;
