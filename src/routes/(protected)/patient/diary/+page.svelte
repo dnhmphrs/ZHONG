@@ -12,11 +12,10 @@
 	}
 
 	onMount(async () => {
-		const { data: { user } } = await supabase.auth.getUser();
 		const { data, error } = await supabase
 			.from('diary')
 			.select('*')
-			.eq('patient_id', user.id);
+			.eq('patient_id', supabase.auth.user().id);
 
 		if (!error) {
 			diaries = data;

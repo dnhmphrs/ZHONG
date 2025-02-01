@@ -9,17 +9,16 @@ export async function signInUser(email, password) {
     
     if (authError) return { error: authError };
 
-    // Verify the user is a patient
+    // All users can access patient features
     const { data, error } = await supabase
         .from('profile')
         .select('*')
         .eq('id', authData.user.id)
-        .eq('role', 'patient')
         .single();
 
     if (error || !data) {
         await supabase.auth.signOut();
-        return { error: new Error('Not authorized as patient') };
+        return { error: new Error('User profile not found') };
     }
 
     return { data: authData };

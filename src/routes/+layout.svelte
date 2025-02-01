@@ -13,9 +13,18 @@
 	import { onMount } from 'svelte';
 	import { screenType, isIframe, screenSize } from '$lib/store/store';
 	import { getDeviceType, getScreenSize } from '$lib/functions/utils';
+	import { supabase } from '$lib/backend/supabase';
+	import { invalidate, goto } from '$app/navigation';
+	import { writable } from 'svelte/store';
 
 	export let data;
 	let Geometry;
+	let initialized = false;
+	let session = null;
+	let profile = null;
+
+	// Create a store for auth state that's accessible to child routes
+	export const authStore = writable({ session: null, profile: null });
 
 	$: if (browser && data?.analyticsId) {
 		webVitals({
@@ -34,7 +43,71 @@
 		isIframe.set(window.location !== window.parent.location);
 	}
 
+	async function initializeAuth() {
+		const { data: { session: authSession } } = await supabase.auth.getSession();
+		console.log('initializeAuth session:', authSession);
+		if (authSession) {
+			const { data: profileData } = await supabase
+				.from('profile')
+				.select('role')
+				.eq('id', authSession.user.id)
+				.single();
+			
+			console.log('initializeAuth profile:', profileData);
+			session = authSession;
+			profile = profileData;
+			authStore.set({ 
+				session: {
+					user: authSession.user,
+					role: profileData.role
+				}, 
+				profile: profileData 
+			});
+		}
+		initialized = true;
+	}
+
+	// Only check protected routes after initialization AND when we have definitive auth state
+	$: if (initialized) {
+		const isProtectedRoute = $page.url.pathname.startsWith('/diary') || 
+								$page.url.pathname.startsWith('/clinician');
+		
+		if (isProtectedRoute && !session) {
+			goto('/login');
+		} else if (profile?.role === 'patient' && $page.url.pathname.startsWith('/clinician')) {
+			goto('/diary');
+		}
+	}
+
 	onMount(async () => {
+		await initializeAuth();
+
+		// Listen for auth changes
+		const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+			// Reset initialized state for sign out
+			if (event === 'SIGNED_OUT') {
+				session = null;
+				profile = null;
+				authStore.set({ session: null, profile: null });
+				goto('/login');
+				return;
+			}
+
+			session = newSession;
+			if (session) {
+				const { data: profileData } = await supabase
+					.from('profile')
+					.select('role')
+					.eq('id', session.user.id)
+					.single();
+				profile = profileData;
+				authStore.set({ session, profile });
+			} else {
+				profile = null;
+				authStore.set({ session: null, profile: null });
+			}
+		});
+
 		// webgl
 		const module = await import('$lib/graphics/webgl.svelte');
 		Geometry = module.default;
@@ -48,6 +121,7 @@
 
 		return () => {
 			window.removeEventListener('resize', () => handleScreen());
+			subscription.unsubscribe();
 		};
 	});
 </script>
@@ -60,18 +134,24 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </svelte:head>
 
-<!-- {#if Geometry}
-	<svelte:component this={Geometry} />
+{#if !initialized}
+	<div class="loading">Loading...</div>
 {:else}
-	<div class="loading">loading.</div>
-{/if} -->
-
-<div class="app">
-	<Header/>
-	<main>
-		<slot />
-	</main>
-</div>
+	<div class="app">
+		<Header 
+			data={{ 
+				session: session ? {
+					user: session.user,
+					role: profile?.role
+				} : null
+			}} 
+			{initialized}
+		/>
+		<main>
+			<slot />
+		</main>
+	</div>
+{/if}
 
 <style>
 	.app {
@@ -86,16 +166,13 @@
 		background: var(--background);
 	}
 
-	/* .loading {
-		position: absolute;
-		font-style: italic;
-		font-family: serif;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		padding: 10px;
-		font-size: 12px;
-	} */
+	.loading {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 100vh;
+		width: 100vw;
+	}
 
 	main {
 		flex: 1;
