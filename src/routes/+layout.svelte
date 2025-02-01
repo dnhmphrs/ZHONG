@@ -71,7 +71,7 @@
 	onMount(() => {
 		auth.initializeAuth();
 
-		// webgl
+		// webgl - 
 		// const module = await import('$lib/graphics/webgl.svelte');
 		// Geometry = module.default;
 
