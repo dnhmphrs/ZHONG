@@ -4,24 +4,28 @@
 	import DaySelector from './DaySelector.svelte';
 	import DiaryEntry from './DiaryEntry.svelte';
 
-	let selectedDate = new Date();
+	// Ensure we have a clean date object at midnight
+	let selectedDate = new Date(new Date().setHours(0, 0, 0, 0));
 	let diaries = [];
 
 	function handleDateSelect(event) {
-		selectedDate = event.detail.date;
+		console.log('Date selected:', event.detail.date);
+		// Create a new Date object to ensure reactivity
+		selectedDate = new Date(event.detail.date.setHours(0, 0, 0, 0));
+		console.log('Updated selectedDate:', selectedDate);
 	}
 
-	onMount(async () => {
-		const { data: { user } } = await supabase.auth.getUser();
-		const { data, error } = await supabase
-			.from('diary')
-			.select('*')
-			.eq('patient_id', user.id);
-
-		if (!error) {
-			diaries = data;
-		}
-	});
+	// onMount(async () => {
+	// 	const { data: { user } } = await supabase.auth.getUser();
+	// 	const { data, error } = await supabase
+	// 		.from('diary')
+	// 		.select('*')
+	// 		.eq('patient_id', user.id);
+	//
+	// 	if (!error) {
+	// 		diaries = data;
+	// 	}
+	// });
 </script>
 
 <div class="diary-page">

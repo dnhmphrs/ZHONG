@@ -131,11 +131,22 @@ function createAuthStore() {
     }
 
     async function signOut() {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-
-        set({ session: null, profile: null, viewPreference: null, initialized: true });
-        goto('/login');
+        try {
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error;
+    
+            set({ session: null, profile: null, viewPreference: null, initialized: true });
+            // Clear any stored auth data
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('sb-auth-token');
+                document.cookie = 'sb-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            }
+            goto('/login');
+        } catch (error) {
+            console.error('Sign out error:', error);
+            // Force redirect to login even if there's an error
+            goto('/login');
+        }
     }
 
     return {

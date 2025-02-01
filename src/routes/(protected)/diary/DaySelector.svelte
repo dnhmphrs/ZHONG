@@ -8,7 +8,8 @@
 	
 	function generateDates(centerDate) {
 		const dates = [];
-		const startDate = new Date(centerDate);
+		// Create a new date without mutating the original
+		const startDate = new Date(centerDate.getFullYear(), centerDate.getMonth(), centerDate.getDate());
 		
 		// Go back 4 weeks and to the nearest Monday
 		startDate.setDate(startDate.getDate() - 28);
@@ -16,8 +17,7 @@
 		
 		// Generate 8 weeks (4 before, current, 3 after)
 		for (let i = 0; i < 56; i++) {
-			const date = new Date(startDate);
-			date.setDate(date.getDate() + i);
+			const date = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + i);
 			dates.push({
 				date,
 				isToday: isSameDay(date, new Date()),
@@ -38,6 +38,7 @@
 		return weeks;
 	}
 	
+	// Force regeneration when selectedDate changes
 	$: dates = generateDates(selectedDate);
 	$: weeks = groupIntoWeeks(dates);
 	
@@ -48,6 +49,7 @@
 	}
 	
 	function selectDate(date) {
+		console.log('Selecting date:', date);
 		dispatch('dateSelect', { date });
 	}
 

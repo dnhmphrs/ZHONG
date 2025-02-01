@@ -21,8 +21,8 @@
 	--background-50: #23232380;
 	--primary: #f0f0f0;
 	--primary-50: #f0f0f040;
-	--accent: #4FD1C5;  /* Subtle teal */
-	--accent-50: #4FD1C580;  /* Semi-transparent teal */
+	--accent: #FFA500;  /* Warm orange */
+	--accent-50: #FFA50080;  /* Semi-transparent warm orange */
 }
 
 /* :root {
