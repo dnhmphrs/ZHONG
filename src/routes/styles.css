@@ -17,11 +17,11 @@
 	color: var(--color-text);
 
 	/* Light theme variables */
-	--background: #fafafa;
+	--background: #ffffff;
 	--background-light: #f4f4f4;
 	--background-50: #f0f0f080;
-	--primary: #232323;
-	--primary-50: #23232340;
+	--primary: #1b1b1b;
+	--primary-50: #1b1b1b80;
 	--accent: #FF5900;
 	--accent-50: #FFA50080;
 }
