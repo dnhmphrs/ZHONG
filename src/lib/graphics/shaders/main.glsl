@@ -28,10 +28,10 @@ void main() {
     float timescale = 0.000125;
 
     // Theme colors
-    vec3 darkBottom = vec3(0.114, 0.114, 0.114);  // #1d1d1d
-    vec3 darkTop = vec3(0.137, 0.137, 0.137);     // #232323
-    vec3 lightBottom =  vec3(0.97, 0.97, 0.97);   // #f0f0f0
-    vec3 lightTop = vec3(0.941, 0.941, 0.941);    // #f8f8f8
+    vec3 darkBottom = vec3(0.114, 0.114, 0.114);  // ?
+    vec3 darkTop = vec3(0.137, 0.137, 0.137);     // ?
+    vec3 lightBottom =  vec3(0.97, 0.97, 0.97);   // ?
+    vec3 lightTop = vec3(0.941, 0.941, 0.941);    // ?
     
     vec3 bottomColor = isDarkMode ? darkBottom : lightBottom;
     vec3 topColor = isDarkMode ? darkTop : lightTop;
