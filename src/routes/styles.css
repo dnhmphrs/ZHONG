@@ -156,6 +156,7 @@ input:focus {
 /* Range input (slider) styling */
 input[type="range"] {
 	-webkit-appearance: none;
+	appearance: none;
 	background: var(--background-light);
 	border: none;
 	padding: 0;
