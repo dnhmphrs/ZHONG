@@ -1,7 +1,6 @@
-import * as THREE from 'three';
 import { createShaderProgram, setupBuffer } from './UtilFunctions';
-import vertexShader from './shaders/vertex.glsl';
-import fragmentShader from './shaders/main.glsl';
+import vertexShader from '../shaders/vertex.glsl';
+import fragmentShader from '../shaders/main.glsl';
 
 export function setupBackground(gl) {
     const program = createShaderProgram(gl, vertexShader, fragmentShader);
