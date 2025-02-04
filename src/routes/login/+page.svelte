@@ -93,6 +93,7 @@
     .login-form {
         width: 100%;
         max-width: 400px;
+        min-width: 240px;
         padding: 2rem;
         border-radius: 8px;
         background: var(--background-light);
