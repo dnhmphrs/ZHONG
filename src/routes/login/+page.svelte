@@ -1,11 +1,13 @@
 <script>
     import { auth } from '$lib/store/auth';
+    import { supabase } from '$lib/supabase';
 
     let email = '';
     let password = '';
     let loading = false;
     let error = null;
     let clinicalView = false;
+    let errorMessage = null;
 
     async function handleLogin() {
         try {
@@ -16,6 +18,21 @@
             error = e.message;
         } finally {
             loading = false;
+        }
+    }
+
+    async function handleSignIn() {
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+            if (error) throw error;
+            
+            goto('/home');
+        } catch (error) {
+            console.error('Error:', error.message);
+            errorMessage = error.message;
         }
     }
 </script>

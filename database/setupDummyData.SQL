@@ -87,27 +87,6 @@ INSERT INTO diary_aspect (diary_id, aspect_id) VALUES
     ('d0000000-0000-0000-0000-000000000000', 9),
     ('d0000000-0000-0000-0000-000000000000', 10);
 
--- Insert diary entries
-INSERT INTO entry (diary_id, aspect_id, patient_id, entry_date, content_scale, content_text) VALUES
-    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 7, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 8, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 3, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 6, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 4, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 3, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 5, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 7, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 6, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 8, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 7, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, NULL, 'Feeling pretty good today, got a lot done.'),
-    ('d0000000-0000-0000-0000-000000000000', 8, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 9, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 9, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, NULL, 'No significant side effects'),
-    ('d0000000-0000-0000-0000-000000000000', 10, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE, NULL, 'Complete project milestones');
-
--- Add entries for yesterday
-INSERT INTO entry (diary_id, aspect_id, patient_id, entry_date, content_scale, content_text) VALUES
-    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, 6, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, 7, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 3, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, 7, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 4, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, 4, NULL),
-    ('d0000000-0000-0000-0000-000000000000', 7, (SELECT id FROM auth.users WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, NULL, 'Productive day at work');
-
 -- Add example entries for patients
 -- Sarah Johnson (Depression Study) - High compliance
 INSERT INTO entry (diary_id, aspect_id, patient_id, entry_date, content_scale, content_text) VALUES
@@ -163,3 +142,58 @@ INSERT INTO entry (diary_id, aspect_id, patient_id, entry_date, content_scale, c
     ('55550000-0000-0000-0000-000000000005', 1, '50000000-0000-0000-0000-000000000005', CURRENT_DATE - 1, 5, NULL),
     ('55550000-0000-0000-0000-000000000005', 2, '50000000-0000-0000-0000-000000000005', CURRENT_DATE - 1, 4, NULL),
     ('55550000-0000-0000-0000-000000000005', 7, '50000000-0000-0000-0000-000000000005', CURRENT_DATE - 1, NULL, 'First week of tracking, getting used to the routine');
+
+-- Add 30 days of entries for Dan showing interesting patterns
+INSERT INTO entry (diary_id, aspect_id, patient_id, entry_date, content_scale, content_text) VALUES
+    -- Most recent week - showing improvement
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 8, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE, 7, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 7, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE, NULL, 'Feeling more energetic lately'),
+    
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, 7, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 1, 7, NULL),
+    
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 2, 7, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 2, 6, NULL),
+    
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 3, 6, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 3, 6, NULL),
+    
+    -- Previous week - showing a dip
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 7, 4, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 7, 3, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 7, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 7, NULL, 'Rough day, work stress'),
+    
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 8, 5, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 8, 4, NULL),
+    
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 9, 5, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 9, 4, NULL),
+    
+    -- Two weeks ago - stable period
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 14, 6, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 14, 6, NULL),
+    
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 15, 6, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 15, 5, NULL),
+    
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 16, 7, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 16, 6, NULL),
+    
+    -- Three weeks ago - good period
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 21, 8, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 21, 7, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 7, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 21, NULL, 'Great week, exercise helping'),
+    
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 22, 7, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 22, 8, NULL),
+    
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 23, 8, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 23, 7, NULL),
+    
+    -- Four weeks ago - starting point
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 28, 6, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 28, 5, NULL),
+    
+    ('d0000000-0000-0000-0000-000000000000', 1, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 29, 5, NULL),
+    ('d0000000-0000-0000-0000-000000000000', 2, (SELECT id FROM profile WHERE email = 'dan@aufbau.io'), CURRENT_DATE - 29, 6, NULL);

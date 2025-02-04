@@ -32,9 +32,8 @@ export const api = {
         return aspects;
     },
 
-    async getPatientEntries(patientId, date) {
+    async getPatientEntries(patientId, date, startDate = null) {
         // For patient's own view - gets entries through diary
-        // First get the diary id
         const { data: diary, error: diaryError } = await supabase
             .from('diary')
             .select('id')
@@ -47,12 +46,9 @@ export const api = {
         }
 
         const formattedDate = date.toISOString().split('T')[0];
-        console.log('Patient entries - querying for:', {
-            diary_id: diary.id,
-            date: formattedDate
-        });
+        const formattedStartDate = startDate?.toISOString().split('T')[0];
         
-        const { data: entries, error } = await supabase
+        let query = supabase
             .from('entry')
             .select(`
                 id,
@@ -65,15 +61,33 @@ export const api = {
                     data_type
                 )
             `)
-            .eq('diary_id', diary.id)
-            .eq('entry_date', formattedDate);
-        
-        console.log('Patient entries - got:', entries);
+            .eq('diary_id', diary.id);
 
+        if (startDate) {
+            // For trends, get all entries in date range
+            query = query
+                .gte('entry_date', formattedStartDate)
+                .lte('entry_date', formattedDate)
+                .order('entry_date', { ascending: false });
+        } else {
+            // For single day, get entries for just that day
+            query = query
+                .eq('entry_date', formattedDate)
+                .eq('diary_id', diary.id);  // Ensure we only get entries for this diary
+        }
+        
+        const { data: entries, error } = await query;
+        
         if (error) {
             console.error('Error loading entries:', error);
             return [];
         }
+        
+        console.log(`API: Got ${entries.length} entries for ${startDate ? 'range' : 'single day'}:`, {
+            date: formattedDate,
+            startDate: formattedStartDate,
+            entriesCount: entries.length
+        });
         
         return entries;
     },

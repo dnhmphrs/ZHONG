@@ -7,6 +7,7 @@ function createDiaryStore() {
     const { subscribe, set, update } = writable({
         aspects: [],
         entries: [],
+        todayEntries: [],
         loading: false
     });
 
@@ -21,9 +22,32 @@ function createDiaryStore() {
             console.log('Loading entries for date:', date);
             update(s => ({ ...s, loading: true }));
             try {
-                const entries = await api.getPatientEntries(get(auth).session.user.id, date);
-                console.log('Got entries:', entries);
-                update(s => ({ ...s, entries, loading: false }));
+                // Get 30 days of entries for trends
+                const thirtyDaysAgo = new Date(date);
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                const entries = await api.getPatientEntries(
+                    get(auth).session.user.id, 
+                    date,
+                    thirtyDaysAgo
+                );
+
+                // Also get just today's entries for completion rate
+                const todayEntries = await api.getPatientEntries(
+                    get(auth).session.user.id,
+                    date
+                );
+
+                console.log('Got entries:', {
+                    trendEntries: entries.length,
+                    todayEntries: todayEntries.length
+                });
+
+                update(s => ({ 
+                    ...s, 
+                    entries: entries,        // 30 days for trends
+                    todayEntries: todayEntries,  // Single day for completion
+                    loading: false 
+                }));
             } catch (error) {
                 console.error('Error loading entries:', error);
                 update(s => ({ ...s, error, loading: false }));

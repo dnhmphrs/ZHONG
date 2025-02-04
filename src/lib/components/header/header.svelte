@@ -46,6 +46,7 @@
 				<a href="/clinician/analytics">analytics</a>
 			{:else}
 				<a href="/diary">my diary</a>
+				<a href="/home">home</a>
 			{/if}
 			<button class="icon-button" on:click={toggleDarkMode}>
 				{#if $darkMode}
