@@ -4,7 +4,6 @@
     
     export let data = [];  // Array of {date, value} objects
     export let height = 150;  // Reduced default height
-    export let accentColor = false;  // If true, uses accent color, otherwise primary
     
     let canvas;
     let ctx;
@@ -15,21 +14,30 @@
         drawChart();
     }
     
+    function setupCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = container.getBoundingClientRect();
+        
+        canvas.width = rect.width * dpr;
+        canvas.height = height * dpr;
+        
+        ctx.scale(dpr, dpr);
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${height}px`;
+    }
+    
     onMount(() => {
         ctx = canvas.getContext('2d');
+        setupCanvas();
         
-        // Set up resize observer
         resizeObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
-                const { width } = entry.contentRect;
-                canvas.width = width;
-                canvas.height = height;
+                setupCanvas();
                 drawChart();
             }
         });
         
         resizeObserver.observe(container);
-        
         drawChart();
         
         return () => {
@@ -42,20 +50,15 @@
     function drawChart() {
         if (!ctx || !data || data.length < 2) return;
         
-        const width = canvas.width;
+        const dpr = window.devicePixelRatio || 1;
+        const width = canvas.width / dpr;
         const padding = 20;
         
         // Clear canvas
-        ctx.clearRect(0, 0, width, height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Theme-aware colors
-        const lineColor = accentColor ? 
-            ($darkMode ? 'var(--accent-light)' : 'var(--accent)') :
-            ($darkMode ? 'var(--primary-light)' : 'var(--primary)');
-        
-        const pointColor = accentColor ?
-            ($darkMode ? 'var(--accent-light)' : 'var(--accent)') :
-            ($darkMode ? 'var(--primary-light)' : 'var(--primary)');
+        // Get computed primary color from the container element
+        const color = getComputedStyle(container).getPropertyValue('color');
         
         // Find min/max values
         const values = data.map(d => d.value);
@@ -79,7 +82,7 @@
             ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
         }
         
-        ctx.strokeStyle = lineColor;
+        ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.stroke();
         
@@ -87,15 +90,17 @@
         points.forEach(point => {
             ctx.beginPath();
             ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
-            ctx.fillStyle = pointColor;
+            ctx.fillStyle = color;
             ctx.fill();
         });
     }
 </script>
 
-<div bind:this={container} style="width: 100%; height: {height}px;">
+<div 
+    bind:this={container} 
+    style="width: 100%; height: {height}px; color: var(--accent);"
+>
     <canvas 
         bind:this={canvas}
-        style="width: 100%; height: 100%;"
     />
 </div> 

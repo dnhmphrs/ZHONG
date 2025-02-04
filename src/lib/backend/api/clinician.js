@@ -1,30 +1,74 @@
 import { supabase } from '../supabase';
 
+export async function getAllPatients() {
+    const { data: patients, error } = await supabase
+        .from('profile')
+        .select(`
+            id,
+            name,
+            email,
+            diary (
+                id,
+                name
+            ),
+            cohort_member!patient_id (
+                cohort:cohort_id (
+                    name
+                )
+            )
+        `)
+        .eq('role', 'patient');
+
+    if (error) {
+        console.error('Error loading patients:', error);
+        throw error;
+    }
+
+    // Transform the data to include cohorts array
+    const patientsWithCohorts = patients?.map(patient => ({
+        ...patient,
+        cohorts: patient.cohort_member?.map(cm => cm.cohort.name) || []
+    })) || [];
+
+    console.log('API response:', patientsWithCohorts);
+    return patientsWithCohorts;
+}
+
 export async function getCohorts() {
     const { data: cohorts, error } = await supabase
         .from('cohort')
-        .select('*')
-        .order('created_at', { ascending: false });
-    
-    if (error) throw error;
+        .select('*');
+
+    if (error) {
+        console.error('Error loading cohorts:', error);
+        throw error;
+    }
+
     return cohorts;
 }
 
 export async function getCohortPatients(cohortId) {
-    const { data, error } = await supabase
+    const { data: patients, error } = await supabase
         .from('cohort_member')
         .select(`
-            patient:patient_id (
+            patient:profile (
                 id,
                 name,
                 email,
-                role
+                diary (
+                    id,
+                    name
+                )
             )
         `)
         .eq('cohort_id', cohortId);
-    
-    if (error) throw error;
-    return data.map(d => d.patient);
+
+    if (error) {
+        console.error('Error loading cohort patients:', error);
+        throw error;
+    }
+
+    return patients.map(p => p.patient);
 }
 
 export async function getPatientEntries(patientId, startDate, endDate) {
@@ -44,43 +88,4 @@ export async function getPatientEntries(patientId, startDate, endDate) {
     
     if (error) throw error;
     return data;
-}
-
-export async function getAllPatients() {
-    const { data, error } = await supabase
-        .from('cohort_member')
-        .select(`
-            cohort:cohort_id (
-                name,
-                clinician_id
-            ),
-            patient:patient_id (
-                id,
-                name,
-                email,
-                role
-            )
-        `)
-        .eq('cohort.clinician_id', (await supabase.auth.getUser()).data.user.id)
-        .order('patient_id->name');
-    
-    if (error) throw error;
-    console.log('Raw patient data:', data); // Debug log
-    
-    // Deduplicate patients and add their cohort info
-    const patientsMap = new Map();
-    data.forEach(({ cohort, patient }) => {
-        if (!patientsMap.has(patient.id)) {
-            patientsMap.set(patient.id, {
-                ...patient,
-                cohorts: [cohort.name]
-            });
-        } else {
-            patientsMap.get(patient.id).cohorts.push(cohort.name);
-        }
-    });
-    
-    const patients = Array.from(patientsMap.values());
-    console.log('Processed patients:', patients); // Debug log
-    return patients;
 } 

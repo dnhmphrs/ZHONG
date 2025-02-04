@@ -10,34 +10,52 @@
 
 	onMount(async () => {
 		console.log('Loading patients...');
-		await clinicianStore.loadAllPatients();
-		console.log('Store state:', $clinicianStore);
+		try {
+			await clinicianStore.loadAllPatients();
+			console.log('Store state after load:', $clinicianStore);
+		} catch (error) {
+			console.error('Error loading patients:', error);
+		}
 	});
 
 	function handleDateSelect(event) {
+		console.log('Date selected:', event.detail.date);
 		selectedDate = event.detail.date;
-		if ($clinicianStore.selectedPatient) {
-			clinicianStore.selectPatient($clinicianStore.selectedPatient);
-		}
 	}
 
-	$: patients = $clinicianStore.allPatients;
+	$: patients = $clinicianStore.allPatients || [];
 	$: selectedPatient = $clinicianStore.selectedPatient;
-	$: entries = $clinicianStore.entries;
+	$: entries = $clinicianStore.entries || [];
+	$: console.log('Raw entries:', entries);
+	$: currentDateEntries = entries.filter(e => e.entry_date === selectedDate.toISOString().split('T')[0]);
+	$: console.log('Date comparison:', {
+		selectedDate: selectedDate.toISOString().split('T')[0],
+		entryDates: entries.map(e => e.entry_date),
+		matchingEntries: currentDateEntries
+	});
 	$: loading = $clinicianStore.loading;
 
-	// Add computed stats
+	// Add computed stats with null checks
 	$: completionRate = entries.length > 0 
-		? Math.round((entries.length / selectedPatient?.aspects?.length || 1) * 100)
+		? Math.round((entries.filter(e => e.entry_date === selectedDate.toISOString().split('T')[0]).length / 4) * 100)
 		: 0;
 	
 	$: averageMood = entries
-		.filter(e => e.aspect.name === 'Mood' && e.content_scale)
-		.reduce((acc, e) => acc + e.content_scale, 0) / entries.length || 0;
+		.filter(e => e.aspect?.name === 'Mood' && e.content_scale)
+		.reduce((acc, e, i, arr) => acc + e.content_scale, 0) / 
+		(entries.filter(e => e.aspect?.name === 'Mood' && e.content_scale).length || 1);
 
 	// Add trend data computation
 	$: moodTrend = entries
-		.filter(e => e.aspect.name === 'Mood' && e.content_scale)
+		.filter(e => {
+			console.log('Mood entry check:', {
+				name: e.aspect?.name,
+				scale: e.content_scale,
+				aspect: e.aspect,
+				entry: e
+			});
+			return e.aspect?.name === 'Mood' && e.content_scale != null;
+		})
 		.map(e => ({
 			date: new Date(e.entry_date),
 			value: e.content_scale
@@ -45,12 +63,18 @@
 		.sort((a, b) => a.date - b.date);
 		
 	$: sleepTrend = entries
-		.filter(e => e.aspect.name === 'Sleep Quality' && e.content_scale)
+		.filter(e => {
+			console.log('Filtering sleep entry:', e);
+			return e.aspect?.name === 'Sleep Quality' && e.content_scale != null;
+		})
 		.map(e => ({
 			date: new Date(e.entry_date),
 			value: e.content_scale
 		}))
 		.sort((a, b) => a.date - b.date);
+
+	$: hasTrendData = moodTrend.length > 1 || sleepTrend.length > 1;
+	$: console.log('Trend data:', { moodTrend, sleepTrend, entries });
 </script>
 
 <div class="page-layout">
@@ -59,8 +83,8 @@
 			title="Patients"
 			items={patients}
 			{selectedPatient}
-			getHeader={(patient) => patient.name}
-			getDescription={(patient) => `${patient.email}\n${patient.cohorts.join(', ')}`}
+			getHeader={(patient) => patient?.name || ''}
+			getDescription={(patient) => patient?.email || ''}
 			onSelect={(patient) => clinicianStore.selectPatient(patient)}
 		/>
 	</div>
@@ -72,64 +96,78 @@
 					<h3>{selectedPatient.name}</h3>
 					<div class="patient-meta">
 						<span>{selectedPatient.email}</span>
-						<span>Cohorts: {selectedPatient.cohorts.join(', ')}</span>
-					</div>
-				</div>
-				<div class="metrics">
-					<div class="metric-card">
-						<div class="metric-value">{completionRate}%</div>
-						<div class="metric-label">30-day completion</div>
-					</div>
-					<div class="metric-card">
-						<div class="metric-value">{averageMood.toFixed(1)}</div>
-						<div class="metric-label">Average mood</div>
-					</div>
-					<div class="metric-card">
-						<div class="metric-value">24</div>
-						<div class="metric-label">Days logged</div>
+						<span>•</span>
+						<span>Cohorts: {selectedPatient.cohorts?.join(', ') || 'None'}</span>
 					</div>
 				</div>
 			</div>
 
 			<div class="main-content">
-				<div class="calendar-section">
-					<h4>Select Date</h4>
-					<DaySelector {selectedDate} on:dateSelect={handleDateSelect} />
+				<!-- Left side: Calendar and Metrics -->
+				<div class="left-content">
+					<div class="calendar-section">
+						<h4>Select Date</h4>
+						<DaySelector {selectedDate} on:dateSelect={handleDateSelect} />
+					</div>
+
+					<div class="metrics-stack">
+						<div class="metric-card accent">
+							<div class="metric-value">{completionRate}%</div>
+							<div class="metric-label">30-day completion</div>
+						</div>
+						<div class="metric-card">
+							<div class="metric-value">{averageMood.toFixed(1)}</div>
+							<div class="metric-label">Average mood</div>
+						</div>
+						<div class="metric-card">
+							<div class="metric-value">
+								{new Set(entries.map(e => e.entry_date)).size}
+							</div>
+							<div class="metric-label">Days logged</div>
+						</div>
+					</div>
 				</div>
 
-				<div class="entries-section">
-					<h4>Daily Entries</h4>
-					{#if loading}
-						<div class="loading">Loading entries...</div>
-					{:else if entries.length === 0}
-						<div class="empty-state">No entries for this date</div>
-					{:else}
-						<div class="entries-list">
-							{#each entries as entry}
-								<div class="entry-card">
-									<div class="entry-header">{entry.aspect.name}</div>
-									{#if entry.aspect.data_type === 'scale'}
-										<div class="entry-value">{entry.content_scale}/10</div>
-									{:else}
-										<div class="entry-text">{entry.content_text}</div>
-									{/if}
+				<!-- Right side: Trends and Daily Entries -->
+				<div class="right-content">
+					<div class="trends-section">
+						<h4>30-Day Trends</h4>
+						{#if hasTrendData}
+							<div class="trends-grid">
+								<div class="trend-card">
+									<div class="trend-header">Mood</div>
+									<TrendChart data={moodTrend} height={120} />
 								</div>
-							{/each}
-						</div>
-					{/if}
-				</div>
+								<div class="trend-card">
+									<div class="trend-header">Sleep Quality</div>
+									<TrendChart data={sleepTrend} height={120} />
+								</div>
+							</div>
+						{:else}
+							<div class="empty-state">Not enough data to show trends yet</div>
+						{/if}
+					</div>
 
-				<div class="trends-section">
-					<h4>30-Day Trends</h4>
-					<div class="trends-grid">
-						<div class="trend-card">
-							<div class="trend-header">Mood</div>
-							<TrendChart data={moodTrend} accentColor={true} />
-						</div>
-						<div class="trend-card">
-							<div class="trend-header">Sleep Quality</div>
-							<TrendChart data={sleepTrend} />
-						</div>
+					<div class="entries-section">
+						<h4>Daily Entries</h4>
+						{#if loading}
+							<div class="loading">Loading entries...</div>
+						{:else if !entries.filter(e => e.entry_date === selectedDate.toISOString().split('T')[0]).length}
+							<div class="empty-state">No entries for this date</div>
+						{:else}
+							<div class="entries-list">
+								{#each entries.filter(e => e.entry_date === selectedDate.toISOString().split('T')[0]) as entry}
+									<div class="entry-card">
+										<div class="entry-header">{entry.aspect.name}</div>
+										{#if entry.aspect.data_type === 'scale'}
+											<div class="entry-value">{entry.content_scale}/10</div>
+										{:else}
+											<div class="entry-text">{entry.content_text}</div>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				</div>
 			</div>
@@ -165,18 +203,23 @@
 		height: 100%;
 		display: flex;
 		flex-direction: column;
-		gap: 2rem;
+		overflow: hidden;
 	}
 
 	.content-header {
-		display: flex;
-		flex-direction: column;
-		gap: 1.5rem;
+		margin-bottom: 0.75rem;
 	}
 
-	.metrics {
+	.patient-info {
 		display: flex;
-		gap: 2rem;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.metrics-stack {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
 	}
 
 	.metric-card {
@@ -203,87 +246,124 @@
 	.main-content {
 		display: flex;
 		gap: 2rem;
-		justify-content: center;
-		width: 100%;
 		flex: 1;
 		min-height: 0;
+		align-items: flex-start;
+		overflow: hidden;
+	}
+
+	.left-content {
+		width: 300px;
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+		min-height: 0;
+	}
+
+	.right-content {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2rem;
+		overflow: hidden;
 	}
 
 	.calendar-section {
-		width: calc((100% - 4rem) / 3);
-		flex-shrink: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.entries-section {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		width: calc((100% - 4rem) / 3);
-		flex-shrink: 0;
-		height: 100%;
-		overflow: hidden;
-	}
-
-	.entries-list {
-		flex: 1;
+		width: 100%;
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
-		overflow-y: auto;
-		padding-right: 0.5rem;
-		min-height: 0;
 	}
 
-	.entry-card {
-		padding: 0.75rem;
+	.entries-section {
 		background: var(--background-light);
 		border: 1px solid var(--primary-50);
 		border-radius: 8px;
+		padding: 1.5rem;
+		flex: 1;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.entries-list {
+		display: flex;
+		flex-direction: column;
+		overflow-y: auto;
+		max-height: calc(100vh - 400px);
+		margin: 0 -1.5rem;
+		padding: 0 1.5rem;
+	}
+
+	.entry-card {
+		padding: 0.5rem 0;
+		border-bottom: 1px solid var(--primary-50);
+		transition: background-color 0.2s ease;
+		opacity: 0.7;
+		display: flex;
+		align-items: baseline;
+		gap: 1rem;
+	}
+
+	.entry-card:hover {
+		opacity: 1;
+	}
+
+	.entry-header {
+		font-size: 12px;
+		color: var(--primary-50);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		width: 100px;
+		flex-shrink: 0;
+		font-weight: 700;
+	}
+
+	.entry-value {
+		font-size: 14px;
+		font-weight: 400;
+		color: var(--primary);
+	}
+
+	.entry-text {
+		font-size: 12px;
+		line-height: 1.4;
+		color: var(--primary);
+		opacity: 0.8;
+		flex: 1;
+		font-weight: 400;
 	}
 
 	.trends-section {
-		width: calc((100% - 4rem) / 3);
-		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
-		height: 100%;
-		overflow: hidden;
+		gap: 0.75rem;
 	}
 
 	.trends-grid {
-		flex: 1;
 		display: flex;
-		flex-direction: column;
+		flex-direction: row;
 		gap: 1.5rem;
-		overflow-y: auto;
-		padding-right: 0.5rem;
-		min-height: 0;
 	}
 
 	.trend-card {
+		flex: 1;
 		padding: 1.5rem;
 		background: var(--background-light);
 		border: 1px solid var(--primary-50);
 		border-radius: 8px;
-		height: 180px;
+		height: 150px;
 		flex-shrink: 0;
-	}
-
-	.patient-info {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
 	}
 
 	.patient-meta {
 		display: flex;
-		gap: 1rem;
+		gap: 0.5rem;
 		font-size: 12px;
 		color: var(--primary-50);
+		align-items: center;
 	}
 
 	.empty-state {
@@ -310,5 +390,15 @@
 		text-align: center;
 		color: var(--primary-50);
 		font-style: italic;
+	}
+
+	.metric-card.accent {
+		background: var(--accent);
+		border: none;
+	}
+
+	.metric-card.accent .metric-value,
+	.metric-card.accent .metric-label {
+		color: var(--background);
 	}
 </style> 

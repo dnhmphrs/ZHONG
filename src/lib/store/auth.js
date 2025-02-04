@@ -171,4 +171,12 @@ function createAuthStore() {
     };
 }
 
-export const auth = createAuthStore(); 
+export const auth = createAuthStore();
+
+const protectedPaths = [
+    '/clinician',
+    '/clinician/patients',
+    '/clinician/cohorts',
+    '/clinician/analytics',
+    '/diary'
+]; 

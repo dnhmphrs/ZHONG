@@ -1,5 +1,7 @@
 import { writable } from 'svelte/store';
-import { getCohorts, getCohortPatients, getPatientEntries, getAllPatients } from '../backend/api/clinician';
+import { getCohorts, getCohortPatients, getAllPatients } from '../backend/api/clinician';
+import { supabase } from '$lib/backend/supabase';
+import { api } from './api';
 
 function createClinicianStore() {
     const { subscribe, set, update } = writable({
@@ -19,9 +21,11 @@ function createClinicianStore() {
             update(s => ({ ...s, loading: true }));
             try {
                 const patients = await getAllPatients();
-                update(s => ({ ...s, allPatients: patients, loading: false }));
+                console.log('Loaded patients:', patients);
+                update(s => ({ ...s, allPatients: patients || [], loading: false }));
             } catch (error) {
-                update(s => ({ ...s, error, loading: false }));
+                console.error('Error loading patients:', error);
+                update(s => ({ ...s, error, loading: false, allPatients: [] }));
             }
         },
         loadCohorts: async () => {
@@ -43,18 +47,32 @@ function createClinicianStore() {
             }
         },
         selectPatient: async (patient) => {
+            console.log('Selecting patient:', patient);
             update(s => ({ ...s, loading: true, selectedPatient: patient }));
             try {
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                // Get the most recent date that has entries
+                const { data: latestEntry } = await supabase
+                    .from('entry')
+                    .select('entry_date')
+                    .eq('patient_id', patient.id)
+                    .order('entry_date', { ascending: false })
+                    .limit(1);
                 
-                const entries = await getPatientEntries(
-                    patient.id,
-                    thirtyDaysAgo.toISOString().split('T')[0],
-                    new Date().toISOString().split('T')[0]
-                );
+                const selectedDate = latestEntry?.[0]?.entry_date 
+                    ? new Date(latestEntry[0].entry_date)
+                    : new Date();
+
+                console.log('Date being queried:', {
+                    full: selectedDate,
+                    formatted: selectedDate.toISOString().split('T')[0],
+                    latestEntry
+                });
+
+                const entries = await api.getClinicianPatientEntries(patient.id, selectedDate);
+                console.log('Got entries:', entries);
                 update(s => ({ ...s, entries, loading: false }));
             } catch (error) {
+                console.error('Error in selectPatient:', error);
                 update(s => ({ ...s, error, loading: false }));
             }
         }

@@ -1,8 +1,8 @@
 <script>
     export let title = '';
     export let items = [];
-    export let selectedItem = null;
-    export let getHeader = (item) => item.name;
+    export let selectedPatient = null;
+    export let getHeader = (item) => item.toString();
     export let getDescription = (item) => '';
     export let onSelect = (item) => {};
 </script>
@@ -13,7 +13,7 @@
         {#each items as item}
             <button 
                 class="list-item" 
-                class:selected={selectedItem?.id === item.id}
+                class:selected={selectedPatient?.id === item.id}
                 on:click={() => onSelect(item)}
             >
                 <div class="item-header">{getHeader(item)}</div>
@@ -31,50 +31,65 @@
         height: 100%;
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+    }
+
+    .panel-header {
+        text-align: left;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--primary-50);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        border-bottom: 1px solid var(--primary-50);
     }
 
     .list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
+        height: 100%;
         overflow-y: auto;
     }
 
     .list-item {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        padding: 1rem;
-        background: var(--background-light);
-        border: 1px solid var(--primary-50);
-        border-radius: 8px;
+        padding: 0.75rem 0;
+        width: 100%;
         text-align: left;
-        transition: all 0.2s ease;
+        border: none;
+        background: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        border-bottom: 1px solid var(--primary-50);
+        opacity: 0.7;
     }
 
     .list-item:hover {
-        border-color: var(--accent);
+        opacity: 1;
     }
 
     .list-item.selected {
-        background: var(--primary);
-        color: var(--background);
+        opacity: 1;
+        border-bottom-color: var(--accent);
     }
 
     .item-header {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 500;
+        margin-bottom: 0.25rem;
     }
 
     .item-description {
         font-size: 12px;
         color: var(--primary-50);
+        line-height: 1.4;
+        white-space: pre-line;
     }
 
-    .panel-header {
-        text-align: center;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid var(--primary-50);
+    .title {
+        padding: 0.75rem 1rem;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--primary-50);
+        border-bottom: 1px solid var(--background);
+        background: var(--background-light);
     }
 </style> 
