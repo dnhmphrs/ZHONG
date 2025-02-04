@@ -7,13 +7,6 @@
 	export let data;
 	export let initialized = false;
 	
-	$: {
-		console.log('Header data:', data);
-		console.log('Header userRole:', data?.session?.role);
-		console.log('Header viewPreference:', data?.session?.viewPreference);
-		console.log('Header showClinicalFeatures:', showClinicalFeatures);
-	}
-
 	$: userRole = data?.session?.role;
 	$: viewPreference = data?.session?.viewPreference;
 	$: isAuthenticated = !!data?.session?.user;
@@ -51,8 +44,9 @@
 				<a href="/clinician/patients">patients</a>
 				<a href="/clinician/cohorts">cohorts</a>
 				<a href="/clinician/analytics">analytics</a>
+			{:else}
+				<a href="/diary">my diary</a>
 			{/if}
-			<a href="/diary">my diary</a>
 			<button class="icon-button" on:click={toggleDarkMode}>
 				{#if $darkMode}
 					☀️
@@ -63,7 +57,7 @@
 			<button on:click={signOut}>sign out</button>
 		{:else}
 			<button class="icon-button" on:click={toggleDarkMode}>
-				{#if !$darkMode}
+				{#if $darkMode}
 					☀️
 				{:else}
 					🌙

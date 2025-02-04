@@ -15,20 +15,18 @@ function createAuthStore() {
     async function initializeAuth() {
         try {
             // Get current session first
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            
+            // If there's a session error, clear everything
+            if (sessionError) {
+                console.error('Session error:', sessionError);
+                set({ session: null, profile: null, viewPreference: null, initialized: true });
+                return;
+            }
             
             if (!session) {
                 set({ session: null, profile: null, viewPreference: null, initialized: true });
                 return;
-            }
-
-            // Only try to refresh if we have an existing session
-            if (session) {
-                const { data: { session: refreshed }, error: refreshError } = 
-                    await supabase.auth.refreshSession();
-                if (!refreshError && refreshed) {
-                    session = refreshed;
-                }
             }
 
             const { data: profile } = await supabase
@@ -36,6 +34,13 @@ function createAuthStore() {
                 .select('role')
                 .eq('id', session.user.id)
                 .single();
+
+            // If we can't get the profile, something's wrong with the session
+            if (!profile) {
+                console.error('No profile found for user');
+                set({ session: null, profile: null, viewPreference: null, initialized: true });
+                return;
+            }
 
             // Get stored view preference if clinician
             let viewPreference = null;
