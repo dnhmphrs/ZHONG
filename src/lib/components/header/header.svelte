@@ -1,6 +1,6 @@
 <script>
 	import { page } from '$app/stores';
-	import { screenType } from '$lib/store/store';
+	import { screenType, darkMode } from '$lib/store/store';
 	import { supabase } from '$lib/backend/supabase';
 	import { goto } from '$app/navigation';
 
@@ -20,10 +20,26 @@
 	$: showClinicalFeatures = isAuthenticated && userRole === 'clinician' && viewPreference === 'clinical';
 
 	async function signOut() {
-		const { error } = await supabase.auth.signOut();
-		if (!error) {
-			window.location.href = '/login';  // Force a full page reload
+		try {
+			// Clear any stored auth data first
+			if (typeof window !== 'undefined') {
+				localStorage.removeItem('sb-auth-token');
+				localStorage.removeItem('viewPreference');
+				document.cookie = 'sb-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+			}
+
+			const { error } = await supabase.auth.signOut();
+			// Always redirect, even if there's an error
+			window.location.href = '/login';
+		} catch (e) {
+			console.error('Sign out error:', e);
+			// Force redirect even if there's an error
+			window.location.href = '/login';
 		}
+	}
+
+	function toggleDarkMode() {
+		darkMode.update(current => !current);
 	}
 </script>
 
@@ -37,7 +53,22 @@
 				<a href="/clinician/analytics">analytics</a>
 			{/if}
 			<a href="/diary">my diary</a>
+			<button class="icon-button" on:click={toggleDarkMode}>
+				{#if $darkMode}
+					☀️
+				{:else}
+					🌙
+				{/if}
+			</button>
 			<button on:click={signOut}>sign out</button>
+		{:else}
+			<button class="icon-button" on:click={toggleDarkMode}>
+				{#if !$darkMode}
+					☀️
+				{:else}
+					🌙
+				{/if}
+			</button>
 		{/if}
 	</div>
 	<!-- {#if $screenType==3}
@@ -105,5 +136,17 @@
 
 	button:hover {
 		background: var(--primary-50);
+	}
+
+	.icon-button {
+		padding: 4px 8px;
+		font-size: 14px;
+		background: none;
+		border: none;
+		cursor: pointer;
+	}
+
+	.icon-button:hover {
+		transform: scale(1.1);
 	}
 </style>

@@ -1,5 +1,6 @@
 <script>
 	import './styles.css';
+	import { darkMode } from '$lib/store/store';
 
 	// temp
 	// import { fetchLeaderboard, setNewPlayerID } from '$lib/backend/api';
@@ -69,7 +70,7 @@
 		}
 	}
 
-	onMount(() => {
+	onMount(async() => {
 		auth.initializeAuth();
 
 		// Check if fonts are loaded
@@ -78,12 +79,8 @@
 		});
 
 		// webgl - 
-		// const module = await import('$lib/graphics/webgl.svelte');
-		// Geometry = module.default;
-
-		// Remove these lines since fetchLeaderboard is commented out
-		// let leader = fetchLeaderboard();
-		// console.log(leader);
+		const module = await import('$lib/graphics/webgl.svelte');
+		Geometry = module.default;
 
 		handleScreen();
 		window.addEventListener('resize', () => handleScreen());
@@ -116,12 +113,22 @@
 		type="font/woff" 
 		crossorigin
 	/>
+
+	<!-- Apply dark mode class to html element -->
+	<script>
+		// Prevent flash of wrong theme
+		const theme = localStorage.getItem('theme');
+		if (theme === 'light') {
+			document.documentElement.classList.remove('dark-mode');
+		}
+	</script>
 </svelte:head>
 
 {#if !authState?.initialized || !fontsLoaded}
 	<div class="loading">Loading...</div>
 {:else}
 	<div class="app">
+		<svelte:component this={Geometry} />
 		<Header 
 			data={{ 
 				session: authState.session ? {

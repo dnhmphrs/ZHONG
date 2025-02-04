@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { darkMode } from '$lib/store/store';
 
   // import { hexToWebGLColor } from './webgl/UtilFunctions.js';
   import { setupBackground, drawBackground,  cleanupBackground } from './webgl/Background.js';
@@ -57,13 +58,13 @@
     // -------------------------------------------------------------------------
 
     function render() {
-			// gl.clearColor(0, 0, 0, 0);
-			gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
-			drawBackground(gl, bg, performance.now(), aspectRatio);
-      // drawBox(gl, box, black, performance.now(), aspectRatio);
+        drawBackground(gl, bg, performance.now(), aspectRatio, $darkMode);
+        // drawBox(gl, box, black, performance.now(), aspectRatio);
 
-			requestAnimationFrame(render);
+        requestAnimationFrame(render);
     }
 
     requestAnimationFrame(render);

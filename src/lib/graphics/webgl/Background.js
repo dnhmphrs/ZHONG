@@ -14,6 +14,7 @@ const bgFragShaderSource = `
   varying vec2 vUv;
   uniform float time;
   uniform float aspectRatio;
+  uniform bool isDarkMode;
   
   // float soften(float value) {
   //   // Non-linear scaling function to soften transitions
@@ -25,21 +26,22 @@ const bgFragShaderSource = `
     float zoom = 1.0;
     float timescale = 0.000125;
 
+    // Theme colors
+    vec3 darkBottom = vec3(0.114, 0.114, 0.114);  // #1d1d1d
+    vec3 darkTop = vec3(0.137, 0.137, 0.137);     // #232323
+    vec3 lightBottom = vec3(0.941, 0.941, 0.941); // #f0f0f0
+    vec3 lightTop = vec3(1.0, 1.0, 1.0);          // #ffffff
+    
+    vec3 bottomColor = isDarkMode ? darkBottom : lightBottom;
+    vec3 topColor = isDarkMode ? darkTop : lightTop;
+
     vec2 adjustedPosition = (vUv - 0.5) / zoom + 0.5;
     adjustedPosition.x *= aspectRatio; // Adjust for aspect ratio
-
-    // Define pastel colors directly in the shader
-    vec3 primary = vec3(0.95, 0.975, 0.975);
-    vec3 pastel1 = vec3(0.85, 0.875, 0.875); // Pastel pink
-
-    // Adjust the center position
-    vec2 center = vec2(0.5, 0.5);
-    center.x *= aspectRatio;
 
     // Stabilize the band size
     // float bandSize = 0.1 + sin(time * timescale) * 0.05; 
     float bandSize = 0.025;
-    float dist = length(adjustedPosition - center);
+    float dist = length(adjustedPosition - vec2(0.5, 0.5));
     float bandedDist = fract(dist / bandSize) * bandSize / dist * fract(dist / bandSize);
 
     // Smoother wave effect
@@ -55,8 +57,8 @@ const bgFragShaderSource = `
 
     float range1 = step(0.1, noiseEffect);
     
-    vec3 color = mix(primary, pastel1, range1 * -wave );
-    color = mix(primary, color, wave * noiseEffect );
+    vec3 color = mix(bottomColor, topColor, vUv.y);
+    color = mix(bottomColor, color, wave * noiseEffect );
 
     gl_FragColor = vec4(color, 1.0);
   }
@@ -68,17 +70,19 @@ export function setupBackground(gl) {
 	const positionAttributeLocation = gl.getAttribLocation(program, 'position');
 	const timeUniformLocation = gl.getUniformLocation(program, 'time');
 	const aspectRatioUniformLocation = gl.getUniformLocation(program, 'aspectRatio');
+	const isDarkModeUniformLocation = gl.getUniformLocation(program, 'isDarkMode');
 
 	return {
 		program,
 		positionBuffer,
 		positionAttributeLocation,
 		timeUniformLocation,
-		aspectRatioUniformLocation
+		aspectRatioUniformLocation,
+		isDarkModeUniformLocation
 	};
 }
 
-export function drawBackground(gl, bg, time, aspectRatio) {
+export function drawBackground(gl, bg, time, aspectRatio, isDarkMode) {
 	gl.useProgram(bg.program);
 	gl.bindBuffer(gl.ARRAY_BUFFER, bg.positionBuffer);
 	gl.vertexAttribPointer(bg.positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
@@ -86,6 +90,7 @@ export function drawBackground(gl, bg, time, aspectRatio) {
 	// uniforms
 	gl.uniform1f(bg.timeUniformLocation, time);
 	gl.uniform1f(bg.aspectRatioUniformLocation, aspectRatio);
+	gl.uniform1i(bg.isDarkModeUniformLocation, isDarkMode ? 1 : 0);
 	gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
