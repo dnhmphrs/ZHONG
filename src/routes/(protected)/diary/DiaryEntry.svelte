@@ -47,26 +47,24 @@
 
 	// Load entries for selected date
 	async function loadEntries(date) {
-		if (!diary) return;  // Don't load entries if we don't have a diary
-		
-		const { data: { user } } = await supabase.auth.getUser();
-		if (!user) return;
+		const { data: aspectsData, error: aspectsError } = await supabase
+			.from('aspect')
+			.select('*')
+			.order('display_order');
 
-		console.log('Loading entries for:', date.toISOString().split('T')[0]);
-		
+		if (!aspectsError) {
+			aspects = aspectsData;
+		}
+
 		const { data: entriesData, error: entriesError } = await supabase
 			.from('entry')
 			.select('*')
-			.eq('entry_date', date.toISOString().split('T')[0])
-			.eq('patient_id', user.id);  // Only get entries for current user
-
-		console.log('Entries received:', entriesData);
-		console.log('Entries error:', entriesError);
+			.eq('entry_date', date.toISOString().split('T')[0]);
 
 		if (!entriesError) {
 			entries = Object.fromEntries(
 				aspects.map(aspect => [
-					aspect.id, 
+					aspect.id,
 					entriesData?.find(e => e.aspect_id === aspect.id) || {
 						content_scale: null,
 						content_text: aspect.data_type === 'text' ? '' : null
@@ -74,7 +72,6 @@
 				])
 			);
 		}
-		console.log('Processed entries:', entries);
 	}
 
 	onMount(() => {

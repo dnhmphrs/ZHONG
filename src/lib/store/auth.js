@@ -14,11 +14,21 @@ function createAuthStore() {
 
     async function initializeAuth() {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            // Get current session first
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
             
             if (!session) {
                 set({ session: null, profile: null, viewPreference: null, initialized: true });
                 return;
+            }
+
+            // Only try to refresh if we have an existing session
+            if (session) {
+                const { data: { session: refreshed }, error: refreshError } = 
+                    await supabase.auth.refreshSession();
+                if (!refreshError && refreshed) {
+                    session = refreshed;
+                }
             }
 
             const { data: profile } = await supabase
@@ -29,7 +39,7 @@ function createAuthStore() {
 
             // Get stored view preference if clinician
             let viewPreference = null;
-            if (profile.role === 'clinician') {
+            if (profile?.role === 'clinician') {
                 viewPreference = typeof localStorage !== 'undefined' 
                     ? localStorage.getItem('viewPreference') || 'personal'
                     : 'personal';
@@ -57,9 +67,8 @@ function createAuthStore() {
                             .eq('id', newSession.user.id)
                             .single();
 
-                        // Get stored view preference if clinician
                         let newViewPreference = null;
-                        if (newProfile.role === 'clinician') {
+                        if (newProfile?.role === 'clinician') {
                             newViewPreference = typeof localStorage !== 'undefined'
                                 ? localStorage.getItem('viewPreference') || 'personal'
                                 : 'personal';
