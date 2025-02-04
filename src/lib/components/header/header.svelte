@@ -43,7 +43,6 @@
 			{#if showClinicalFeatures}
 				<a href="/clinician/patients">patients</a>
 				<a href="/clinician/cohorts">cohorts</a>
-				<a href="/clinician/analytics">analytics</a>
 			{:else}
 				<a href="/diary">my diary</a>
 				<a href="/home">home</a>

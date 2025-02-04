@@ -106,6 +106,7 @@
 				<!-- Left side: Calendar and Metrics -->
 				<div class="left-content">
 					<div class="calendar-section">
+						<h4>Select Day</h4>
 						<DaySelector {selectedDate} on:dateSelect={handleDateSelect} />
 					</div>
 

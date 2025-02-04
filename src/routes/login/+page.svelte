@@ -1,6 +1,6 @@
 <script>
     import { auth } from '$lib/store/auth';
-    import { supabase } from '$lib/supabase';
+    import { supabase } from '$lib/backend/supabase';
 
     let email = '';
     let password = '';
