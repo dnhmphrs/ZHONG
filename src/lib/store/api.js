@@ -47,6 +47,10 @@ export const api = {
         }
 
         const formattedDate = date.toISOString().split('T')[0];
+        console.log('Patient entries - querying for:', {
+            diary_id: diary.id,
+            date: formattedDate
+        });
         
         const { data: entries, error } = await supabase
             .from('entry')
@@ -64,6 +68,8 @@ export const api = {
             .eq('diary_id', diary.id)
             .eq('entry_date', formattedDate);
         
+        console.log('Patient entries - got:', entries);
+
         if (error) {
             console.error('Error loading entries:', error);
             return [];

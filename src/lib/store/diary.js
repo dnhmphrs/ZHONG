@@ -18,9 +18,16 @@ function createDiaryStore() {
             update(s => ({ ...s, aspects, loading: false }));
         },
         loadEntries: async (date) => {
+            console.log('Loading entries for date:', date);
             update(s => ({ ...s, loading: true }));
-            const entries = await api.getPatientEntries(get(auth).session.user.id, date);
-            update(s => ({ ...s, entries, loading: false }));
+            try {
+                const entries = await api.getPatientEntries(get(auth).session.user.id, date);
+                console.log('Got entries:', entries);
+                update(s => ({ ...s, entries, loading: false }));
+            } catch (error) {
+                console.error('Error loading entries:', error);
+                update(s => ({ ...s, error, loading: false }));
+            }
         },
         createEntry: async (aspect) => {
             // Implementation for creating new entries

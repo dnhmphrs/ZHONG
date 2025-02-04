@@ -43,36 +43,34 @@
 
 <div class="page-layout">
 	<div class="left-panel">
-		<h4>Select Date</h4>
 		<DaySelector {selectedDate} on:dateSelect={handleDateSelect} />
-
-		<div class="metrics-stack">
-			<div class="metric-card accent">
-				<div class="metric-value">{completionRate}%</div>
-				<div class="metric-label">Today's completion</div>
-			</div>
-			<div class="metric-card">
-				<div class="metric-value">{averageMood.toFixed(1)}</div>
-				<div class="metric-label">Average mood</div>
-			</div>
-			<div class="metric-card">
-				<div class="metric-value">{streakDays}</div>
-				<div class="metric-label">Day streak</div>
-			</div>
-		</div>
 	</div>
 
 	<div class="content">
+		<div class="aggregates">
+			<div class="aggregate-grid">
+				<div class="metric-card accent">
+					<div class="metric-value">{completionRate}%</div>
+					<div class="metric-label">Today's completion</div>
+				</div>
+				<div class="metric-card">
+					<div class="metric-value">{averageMood.toFixed(1)}</div>
+					<div class="metric-label">Average mood</div>
+				</div>
+				<div class="metric-card">
+					<div class="metric-value">{streakDays}</div>
+					<div class="metric-label">Day streak</div>
+				</div>
+			</div>
+		</div>
 		<div class="entries-section">
 			<h4>Daily Entries</h4>
 			{#if $diaryStore.loading}
 				<div class="loading">Loading entries...</div>
-			{:else if $diaryStore.entries.length === 0}
-				<div class="empty-state">No entries for this date</div>
 			{:else}
 				<div class="entries-list">
 					{#each $diaryStore.aspects as aspect}
-						{@const entry = $diaryStore.entries.find(e => e.aspect_id === aspect.id)}
+						{@const entry = $diaryStore.entries.find(e => e.aspect.id === aspect.id)}
 						<div class="entry-card">
 							<div class="entry-header">{aspect.name}</div>
 							{#if entry}
@@ -102,31 +100,39 @@
 		display: flex;
 		gap: 2rem;
 		padding: 1rem;
-		width: 100%;
 		height: 100%;
 	}
 
 	.left-panel {
 		width: 300px;
+		padding-top: 0.75rem;
+	}
+
+	.content {
+		flex: 1;
+		min-width: 600px;
 		display: flex;
 		flex-direction: column;
 		gap: 2rem;
 	}
 
-	.calendar-section {
+	.aggregates {
+		padding: 0.75rem 0;
+	}
+
+	.aggregate-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1.5rem;
+		width: 100%;
+	}
+
+	.aggregate-card {
 		background: var(--background-light);
 		border: 1px solid var(--primary-50);
 		border-radius: 8px;
 		padding: 1.5rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.metrics-stack {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
+		text-align: center;
 	}
 
 	.metric-card {
@@ -159,22 +165,12 @@
 		margin-top: 0.5rem;
 	}
 
-	.content {
-		flex: 1;
-		min-width: 0;
-		height: 100%;
-	}
-
 	.entries-section {
 		background: var(--background-light);
 		border: 1px solid var(--primary-50);
 		border-radius: 8px;
 		padding: 1.5rem;
-		height: 100%;
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		overflow: hidden;
+		min-height: 400px;
 	}
 
 	.entries-list {
