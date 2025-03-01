@@ -45,7 +45,7 @@ void main() {
     float noiseEffect = abs(noisePattern);
     
     // Metaballs with more variety
-    float metaballs = 0.1;
+    float metaballs = 0.5;
     float slowTime = time * 0.0003;
     
     // More spread out positions with varied movement
@@ -57,12 +57,12 @@ void main() {
     vec2 center6 = vec2(1.5 + cos(slowTime * 0.8) * 0.2, 0.5 + sin(slowTime * 1.1) * 0.3);
     
     // Larger radii
-    metaballs += metaball(adjustedPosition, center1, 0.25);
-    metaballs += metaball(adjustedPosition, center2, 0.22);
-    metaballs += metaball(adjustedPosition, center3, 0.20);
-    metaballs += metaball(adjustedPosition, center4, 0.23);
-    metaballs += metaball(adjustedPosition, center5, 0.24);
-    metaballs += metaball(adjustedPosition, center6, 0.21);
+    metaballs += metaball(adjustedPosition, center1, 0.45);
+    metaballs += metaball(adjustedPosition, center2, 0.52);
+    metaballs += metaball(adjustedPosition, center3, 0.60);
+    metaballs += metaball(adjustedPosition, center4, 0.43);
+    metaballs += metaball(adjustedPosition, center5, 0.34);
+    metaballs += metaball(adjustedPosition, center6, 0.31);
     
     // Enhanced shading with multiple noise layers
     float blobShade = metaballs;
@@ -74,7 +74,7 @@ void main() {
     float noise1 = noise(noisePos * noiseScale1);
     float noise2 = noise(noisePos * noiseScale2);
     
-    blobShade *= 0.1 + noise1 * 0.1 + noise2 * 0.1;
+    blobShade *= 0.0 + noise1 * 0.1 + noise2 * 0.1;
     
     float metaballEffect = smoothstep(0.5, 1.1, blobShade);
     
