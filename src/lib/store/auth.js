@@ -102,27 +102,27 @@ function createAuthStore() {
 
         if (error) throw error;
 
+        // First try to get existing profile
         const { data: profile, error: profileError } = await supabase
             .from('profile')
             .select('role')
             .eq('id', data.session.user.id)
             .single();
 
-        // If no profile exists, create one
-        if (profileError) {
-            const { data: newProfile, error: insertError } = await supabase
-                .from('profile')
-                .insert([{
-                    id: data.session.user.id,
-                    role: 'patient',  // default role
-                    name: email.split('@')[0],  // temporary name
-                    email: email
-                }])
-                .select()
-                .single();
+        if (!profile && !profileError) {
+            // If no profile exists but no error (means empty result), enable row security temporarily
+            const { data: newProfile, error: insertError } = await supabase.rpc('create_profile', {
+                user_id: data.session.user.id,
+                user_email: email,
+                user_name: email.split('@')[0],
+                user_role: 'patient'
+            });
             
             if (insertError) throw insertError;
             profile = newProfile;
+        } else if (profileError && profileError.code !== 'PGRST116') {
+            // If it's any other error besides "no rows returned", throw it
+            throw profileError;
         }
 
         const viewPreference = profile.role === 'clinician' 
@@ -136,7 +136,6 @@ function createAuthStore() {
             initialized: true
         });
 
-        // Redirect based on role and view preference
         if (profile.role === 'clinician' && clinicalView) {
             goto('/clinician/patients');
         } else {
