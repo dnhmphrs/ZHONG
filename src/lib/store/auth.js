@@ -109,22 +109,44 @@ function createAuthStore() {
             .eq('id', data.session.user.id)
             .single();
 
-        let userProfile = profile;
+        let userProfile = null;
 
-        if (!profile || profileError) {
-            // Create new profile if none exists
-            const { data: newProfile, error: insertError } = await supabase.rpc('create_profile', {
-                user_id: data.session.user.id,
-                user_email: email,
-                user_name: email.split('@')[0],
-                user_role: 'patient'
-            });
-            
-            if (insertError) throw insertError;
-            userProfile = newProfile;
+        // If profile exists and no error, use it
+        if (profile && !profileError) {
+            userProfile = profile;
+        } else {
+            // Otherwise create a new profile
+            console.log('Creating new profile for user:', data.session.user.id);
+            try {
+                const { data: newProfile, error: insertError } = await supabase.rpc('create_profile', {
+                    user_id: data.session.user.id,
+                    user_email: email,
+                    user_name: email.split('@')[0],
+                    user_role: 'patient'
+                });
+                
+                if (insertError) throw insertError;
+                
+                if (newProfile) {
+                    userProfile = {
+                        id: data.session.user.id,
+                        role: 'patient',
+                        email: email,
+                        name: email.split('@')[0]
+                    };
+                } else {
+                    throw new Error('Failed to create user profile');
+                }
+            } catch (e) {
+                console.error('Error creating profile:', e);
+                throw new Error('Failed to create user profile: ' + e.message);
+            }
         }
 
-        if (!userProfile) throw new Error('Failed to create or retrieve user profile');
+        if (!userProfile || typeof userProfile.role !== 'string') {
+            console.error('Invalid user profile:', userProfile);
+            throw new Error('Invalid user profile data');
+        }
 
         const viewPreference = userProfile.role === 'clinician' 
             ? (clinicalView ? 'clinical' : 'personal')
