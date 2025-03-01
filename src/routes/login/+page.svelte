@@ -1,6 +1,7 @@
 <script>
     import { auth } from '$lib/store/auth';
     import { supabase } from '$lib/backend/supabase';
+    import { goto } from '$app/navigation';
 
     let email = '';
     let password = '';
@@ -9,7 +10,8 @@
     let clinicalView = false;
     let errorMessage = null;
 
-    async function handleLogin() {
+    async function handleLogin(event) {
+        event.preventDefault();
         try {
             loading = true;
             error = null;
@@ -38,7 +40,7 @@
 </script>
 
 <div class="login-container">
-    <form on:submit|preventDefault={handleLogin} class="login-form">
+    <form on:submit={handleLogin} class="login-form">
         <h1>Login</h1>
         
         {#if error}
