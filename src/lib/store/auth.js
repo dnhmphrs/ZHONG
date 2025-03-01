@@ -109,8 +109,10 @@ function createAuthStore() {
             .eq('id', data.session.user.id)
             .single();
 
-        if (!profile && !profileError) {
-            // If no profile exists but no error (means empty result), enable row security temporarily
+        let userProfile = profile;
+
+        if (!profile || profileError) {
+            // Create new profile if none exists
             const { data: newProfile, error: insertError } = await supabase.rpc('create_profile', {
                 user_id: data.session.user.id,
                 user_email: email,
@@ -119,24 +121,23 @@ function createAuthStore() {
             });
             
             if (insertError) throw insertError;
-            profile = newProfile;
-        } else if (profileError && profileError.code !== 'PGRST116') {
-            // If it's any other error besides "no rows returned", throw it
-            throw profileError;
+            userProfile = newProfile;
         }
 
-        const viewPreference = profile.role === 'clinician' 
+        if (!userProfile) throw new Error('Failed to create or retrieve user profile');
+
+        const viewPreference = userProfile.role === 'clinician' 
             ? (clinicalView ? 'clinical' : 'personal')
             : null;
 
         set({
             session: data.session,
-            profile,
+            profile: userProfile,
             viewPreference,
             initialized: true
         });
 
-        if (profile.role === 'clinician' && clinicalView) {
+        if (userProfile.role === 'clinician' && clinicalView) {
             goto('/clinician/patients');
         } else {
             goto('/diary');
@@ -170,12 +171,12 @@ function createAuthStore() {
     };
 }
 
-export const auth = createAuthStore();
-
 const protectedPaths = [
     '/clinician',
     '/clinician/patients',
     '/clinician/cohorts',
     '/clinician/analytics',
     '/diary'
-]; 
+];
+
+export const auth = createAuthStore(); 
