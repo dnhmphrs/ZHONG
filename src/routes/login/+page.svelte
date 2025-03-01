@@ -1,7 +1,6 @@
 <script>
     import { auth } from '$lib/store/auth';
     import { supabase } from '$lib/backend/supabase';
-    import { goto } from '$app/navigation';
 
     let email = '';
     let password = '';
@@ -10,8 +9,7 @@
     let clinicalView = false;
     let errorMessage = null;
 
-    async function handleLogin(event) {
-        event.preventDefault();
+    async function handleLogin() {
         try {
             loading = true;
             error = null;
@@ -40,7 +38,7 @@
 </script>
 
 <div class="login-container">
-    <form on:submit={handleLogin} class="login-form">
+    <form on:submit|preventDefault={handleLogin} class="login-form">
         <h1>Login</h1>
         
         {#if error}
@@ -88,19 +86,17 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 100vh;
+        min-height: 100vh;
         padding: 1rem;
     }
 
     .login-form {
         width: 100%;
         max-width: 400px;
-        min-width: 240px;
         padding: 2rem;
-        border-radius: 8px;
         background: var(--background-light);
-        border: 1px solid var(--primary-50);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
     }
 
     .login-form h1 {
@@ -109,7 +105,7 @@
     }
 
     .form-group {
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
     }
 
     .form-group label {
@@ -147,7 +143,7 @@
         gap: 0.5rem;
     }
 
-    .checkbox input[type="checkbox"] {
+    .checkbox input {
         width: auto;
     }
 </style> 
