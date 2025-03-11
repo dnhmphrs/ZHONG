@@ -92,10 +92,10 @@
 </script>
 
 <svelte:head>
-	<title>IOTA : DEMO</title>
+	<title>ZHONG : DEMO</title>
 	<meta name="description" content="demo site." />
 	<meta name="keywords" content="" />
-	<meta name="author" content="IOTA" />
+	<meta name="author" content="ZHONG" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	
 	<!-- Preload fonts -->

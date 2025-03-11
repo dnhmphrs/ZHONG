@@ -37,7 +37,7 @@
 </script>
 
 <header>
-	<h2>IOTA</h2>
+	<h2>ZHONG</h2>
 	<div class="nav">
 		{#if initialized && isAuthenticated}
 			{#if showClinicalFeatures}
